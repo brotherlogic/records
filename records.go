@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -68,6 +69,50 @@ func addRecord(id int) {
 	}
 }
 
+func getLocation(name string, slot int32) {
+	//Move the previous record down to uncategorized
+	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
+	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer conn.Close()
+	client := pbo.NewOrganiserServiceClient(conn)
+	locationQuery := &pbo.Location{Name: name}
+	location, err := client.GetLocation(context.Background(), locationQuery)
+
+	if err != nil {
+		panic(err)
+	}
+	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	//Move the previous record down to uncategorized
+	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	defer dConn.Close()
+	dClient := pb.NewDiscogsServiceClient(dConn)
+
+	var relMap map[int32]*pbd.Release
+	relMap = make(map[int32]*pbd.Release)
+
+	for _, folderID := range location.FolderIds {
+		releases, _ := dClient.GetReleasesInFolder(context.Background(), &pb.FolderList{Folders: []*pbd.Folder{&pbd.Folder{Id: folderID}}})
+		for _, rel := range releases.Releases {
+			relMap[rel.Id] = rel
+		}
+	}
+
+	for _, release := range location.ReleasesLocation {
+		if release.Slot == slot {
+			fmt.Printf("%v. %v - %v\n", release.Index, pbd.GetReleaseArtist(*relMap[release.ReleaseId]), relMap[release.ReleaseId].Title)
+		}
+	}
+
+}
+
 func main() {
 	addFlags := flag.NewFlagSet("AddRecord", flag.ExitOnError)
 	var id = addFlags.Int("id", 0, "ID of record to add")
@@ -77,6 +122,10 @@ func main() {
 	var units = addLocationFlags.Int("units", 0, "The number of units in the location")
 	var folderIds = addLocationFlags.String("folders", "", "The list of folder IDs")
 
+	getLocationFlags := flag.NewFlagSet("GetLocation", flag.ExitOnError)
+	var getName = getLocationFlags.String("name", "", "The name of the location to get")
+	var slot = getLocationFlags.Int("slot", 0, "The slot to retrieve from")
+
 	switch os.Args[1] {
 	case "add":
 		if err := addFlags.Parse(os.Args[2:]); err == nil {
@@ -85,6 +134,10 @@ func main() {
 	case "addlocation":
 		if err := addLocationFlags.Parse(os.Args[2:]); err == nil {
 			addLocation(*name, *units, *folderIds)
+		}
+	case "getLocation":
+		if err := getLocationFlags.Parse(os.Args[2:]); err == nil {
+			getLocation(*getName, int32(*slot))
 		}
 	}
 }
