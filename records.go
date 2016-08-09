@@ -44,6 +44,7 @@ func addLocation(name string, units int, folders string) {
 
 	defer dConn.Close()
 	dClient := pbo.NewOrganiserServiceClient(dConn)
+	log.Printf("Sending: %v", location)
 	newLocation, _ := dClient.AddLocation(context.Background(), location)
 	log.Printf("New Location = %v", newLocation)
 }
@@ -113,6 +114,26 @@ func getLocation(name string, slot int32) {
 
 }
 
+func listUncategorized() {
+	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	//Move the previous record down to uncategorized
+	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	defer dConn.Close()
+	dClient := pb.NewDiscogsServiceClient(dConn)
+	releases, err := dClient.GetReleasesInFolder(context.Background(), &pb.FolderList{Folders: []*pbd.Folder{&pbd.Folder{Id: 1}}})
+
+	if err != nil {
+		panic(err)
+	}
+
+	for _, release := range releases.Releases {
+		fmt.Printf("%v: %v - %v\n", release.Id, pbd.GetReleaseArtist(*release), release.Title)
+	}
+}
+
 func main() {
 	addFlags := flag.NewFlagSet("AddRecord", flag.ExitOnError)
 	var id = addFlags.Int("id", 0, "ID of record to add")
@@ -139,5 +160,7 @@ func main() {
 		if err := getLocationFlags.Parse(os.Args[2:]); err == nil {
 			getLocation(*getName, int32(*slot))
 		}
+	case "uncat":
+		listUncategorized()
 	}
 }
