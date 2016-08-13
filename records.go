@@ -100,7 +100,13 @@ func getLocation(name string, slot int32) {
 	relMap = make(map[int32]*pbd.Release)
 
 	for _, folderID := range location.FolderIds {
-		releases, _ := dClient.GetReleasesInFolder(context.Background(), &pb.FolderList{Folders: []*pbd.Folder{&pbd.Folder{Id: folderID}}})
+		releases, err := dClient.GetReleasesInFolder(context.Background(), &pb.FolderList{Folders: []*pbd.Folder{&pbd.Folder{Id: folderID}}})
+
+		if err != nil {
+			log.Printf("Cannot retrieve folder %v", folderID)
+			panic(err)
+		}
+
 		for _, rel := range releases.Releases {
 			relMap[rel.Id] = rel
 		}
@@ -133,6 +139,26 @@ func listUncategorized() {
 		fmt.Printf("%v: %v - %v\n", release.Id, pbd.GetReleaseArtist(*release), release.Title)
 	}
 }
+func listFolders() {
+	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
+	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer conn.Close()
+	client := pbo.NewOrganiserServiceClient(conn)
+	org, err := client.GetOrganisation(context.Background(), &pbo.Empty{})
+
+	if err != nil {
+		panic(err)
+	}
+
+	for _, location := range org.Locations {
+		fmt.Printf("%v\n", location.Name)
+	}
+}
 
 func listCollections() {
 	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
@@ -155,7 +181,7 @@ func listCollections() {
 	}
 
 	for _, org := range orgs.Organisations {
-		fmt.Printf("%v", org.Timestamp)
+		fmt.Printf("%v\n", org.Timestamp)
 	}
 }
 
@@ -185,8 +211,10 @@ func main() {
 		if err := getLocationFlags.Parse(os.Args[2:]); err == nil {
 			getLocation(*getName, int32(*slot))
 		}
-	case "list":
+	case "listTimes":
 		listCollections()
+	case "listFolders":
+		listFolders()
 	case "uncat":
 		listUncategorized()
 	}
