@@ -134,6 +134,31 @@ func listUncategorized() {
 	}
 }
 
+func listCollections() {
+	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
+	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer conn.Close()
+	client := pbo.NewOrganiserServiceClient(conn)
+	orgs, err := client.GetOrganisations(context.Background(), &pbo.Empty{})
+
+	if err != nil {
+		panic(err)
+	}
+
+	if len(orgs.Organisations) == 0 {
+		fmt.Printf("There are no stored orgs\n")
+	}
+
+	for _, org := range orgs.Organisations {
+		fmt.Printf("%v", org.Timestamp)
+	}
+}
+
 func main() {
 	addFlags := flag.NewFlagSet("AddRecord", flag.ExitOnError)
 	var id = addFlags.Int("id", 0, "ID of record to add")
@@ -160,6 +185,8 @@ func main() {
 		if err := getLocationFlags.Parse(os.Args[2:]); err == nil {
 			getLocation(*getName, int32(*slot))
 		}
+	case "list":
+		listCollections()
 	case "uncat":
 		listUncategorized()
 	}
