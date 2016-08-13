@@ -63,7 +63,8 @@ func addRecord(id int) {
 	dClient := pb.NewDiscogsServiceClient(dConn)
 
 	release := &pbd.Release{Id: int32(id)}
-	folderAdd := &pb.ReleaseMove{Release: release, NewFolderId: int32(821802)}
+	folderAdd := &pb.ReleaseMove{Release: release, NewFolderId: int32(812802)}
+	log.Printf("Adding: %v", folderAdd)
 	_, err = dClient.AddToFolder(context.Background(), folderAdd)
 	if err != nil {
 		panic(err)
