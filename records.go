@@ -160,6 +160,31 @@ func listFolders() {
 	}
 }
 
+func organise() {
+	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
+	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer conn.Close()
+	client := pbo.NewOrganiserServiceClient(conn)
+	moves, err := client.Organise(context.Background(), &pbo.Empty{})
+
+	if err != nil {
+		panic(err)
+	}
+
+	if len(moves.Moves) == 0 {
+		fmt.Printf("No Moves needed\n")
+	}
+
+	for _, move := range moves.Moves {
+		fmt.Printf("MOVE %v\n", move)
+	}
+}
+
 func listCollections() {
 	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
 	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
@@ -217,5 +242,7 @@ func main() {
 		listFolders()
 	case "uncat":
 		listUncategorized()
+	case "organise":
+		organise()
 	}
 }
