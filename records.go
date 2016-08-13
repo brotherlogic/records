@@ -64,7 +64,7 @@ func addRecord(id int) {
 
 	release := &pbd.Release{Id: int32(id)}
 	folderAdd := &pb.ReleaseMove{Release: release, NewFolderId: int32(812802)}
-	log.Printf("Adding: %v", folderAdd)
+
 	_, err = dClient.AddToFolder(context.Background(), folderAdd)
 	if err != nil {
 		panic(err)
@@ -211,6 +211,31 @@ func listCollections() {
 	}
 }
 
+func moveToPile(id int) {
+	log.Printf("Moving")
+	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	//Move the previous record down to uncategorized
+	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	defer dConn.Close()
+	dClient := pb.NewDiscogsServiceClient(dConn)
+
+	releases, err := dClient.GetReleasesInFolder(context.Background(), &pb.FolderList{Folders: []*pbd.Folder{&pbd.Folder{Id: 1}}})
+
+	for _, release := range releases.Releases {
+		if release.Id == int32(id) {
+			move := &pb.ReleaseMove{Release: &pbd.Release{Id: int32(id), FolderId: 1, InstanceId: release.InstanceId}, NewFolderId: int32(812802)}
+			_, err = dClient.MoveToFolder(context.Background(), move)
+			log.Printf("MOVED %v from %v", move, release)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+}
+
 func main() {
 	addFlags := flag.NewFlagSet("AddRecord", flag.ExitOnError)
 	var id = addFlags.Int("id", 0, "ID of record to add")
@@ -223,6 +248,9 @@ func main() {
 	getLocationFlags := flag.NewFlagSet("GetLocation", flag.ExitOnError)
 	var getName = getLocationFlags.String("name", "", "The name of the location to get")
 	var slot = getLocationFlags.Int("slot", 0, "The slot to retrieve from")
+
+	moveToPileFlags := flag.NewFlagSet("MoveToPile", flag.ContinueOnError)
+	var idToMove = moveToPileFlags.Int("id", 0, "Id of record to move")
 
 	switch os.Args[1] {
 	case "add":
@@ -242,8 +270,14 @@ func main() {
 	case "listFolders":
 		listFolders()
 	case "uncat":
+		if err := moveToPileFlags.Parse(os.Args[2:]); err == nil && *idToMove > 0 {
+			moveToPile(*idToMove)
+		} else {
+			listUncategorized()
+		}
 		listUncategorized()
 	case "organise":
 		organise()
 	}
+
 }
