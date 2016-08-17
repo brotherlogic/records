@@ -171,6 +171,7 @@ func organise() {
 
 	defer conn.Close()
 	client := pbo.NewOrganiserServiceClient(conn)
+	log.Printf("Request re-org from %v:%v", server, port)
 	moves, err := client.Organise(context.Background(), &pbo.Empty{})
 
 	if err != nil {
@@ -209,6 +210,23 @@ func listCollections() {
 	for _, org := range orgs.Organisations {
 		fmt.Printf("%v\n", org.Timestamp)
 	}
+}
+
+func locate(id int) {
+	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
+	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer conn.Close()
+	client := pbo.NewOrganiserServiceClient(conn)
+	res, _ := client.Locate(context.Background(), &pbd.Release{Id: int32(id)})
+
+	fmt.Printf("In %v, slot %v\n", res.Location.Name, res.Slot)
+	fmt.Printf("Before: %v - %v (%v)\n", pbd.GetReleaseArtist(*res.Before), res.Before.Title, res.Before.Id)
+	fmt.Printf("After:  %v - %v (%v)\n", pbd.GetReleaseArtist(*res.After), res.After.Title, res.After.Id)
 }
 
 func moveToPile(id int) {
@@ -252,6 +270,9 @@ func main() {
 	moveToPileFlags := flag.NewFlagSet("MoveToPile", flag.ContinueOnError)
 	var idToMove = moveToPileFlags.Int("id", 0, "Id of record to move")
 
+	locateFlags := flag.NewFlagSet("Locate", flag.ExitOnError)
+	var idToLocate = locateFlags.Int("id", 0, "Id of record to locate")
+
 	switch os.Args[1] {
 	case "add":
 		if err := addFlags.Parse(os.Args[2:]); err == nil {
@@ -278,6 +299,9 @@ func main() {
 		listUncategorized()
 	case "organise":
 		organise()
+	case "locate":
+		if err := locateFlags.Parse(os.Args[2:]); err == nil && *idToLocate > 0 {
+			locate(*idToLocate)
+		}
 	}
-
 }
