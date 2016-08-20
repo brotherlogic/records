@@ -85,6 +85,8 @@ func getLocation(name string, slot int32) {
 	locationQuery := &pbo.Location{Name: name}
 	location, err := client.GetLocation(context.Background(), locationQuery)
 
+	fmt.Printf("%v sorted %v\n", location.Name, location.Sort)
+
 	if err != nil {
 		panic(err)
 	}
@@ -187,6 +189,20 @@ func organise() {
 	}
 }
 
+func updateLocation(loc *pbo.Location) {
+	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
+	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer conn.Close()
+	client := pbo.NewOrganiserServiceClient(conn)
+	log.Printf("Updating: %v", loc)
+	client.UpdateLocation(context.Background(), loc)
+}
+
 func listCollections() {
 	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
 	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
@@ -273,6 +289,10 @@ func main() {
 	locateFlags := flag.NewFlagSet("Locate", flag.ExitOnError)
 	var idToLocate = locateFlags.Int("id", 0, "Id of record to locate")
 
+	updateLocationFlags := flag.NewFlagSet("UpdateLocation", flag.ContinueOnError)
+	var nameToUpdate = updateLocationFlags.String("name", "", "Name of the location to update")
+	var sort = updateLocationFlags.String("sort", "", "Sorting method of the location")
+
 	switch os.Args[1] {
 	case "add":
 		if err := addFlags.Parse(os.Args[2:]); err == nil {
@@ -302,6 +322,20 @@ func main() {
 	case "locate":
 		if err := locateFlags.Parse(os.Args[2:]); err == nil && *idToLocate > 0 {
 			locate(*idToLocate)
+		}
+	case "updatelocation":
+		if err := updateLocationFlags.Parse(os.Args[2:]); err == nil {
+			location := &pbo.Location{Name: *nameToUpdate}
+			if len(*sort) > 0 {
+				switch *sort {
+				case "by_label":
+					location.Sort = pbo.Location_BY_LABEL_CATNO
+				case "by_date":
+					location.Sort = pbo.Location_BY_DATE_ADDED
+				}
+			}
+			log.Printf("HERE: %v", location)
+			updateLocation(location)
 		}
 	}
 }
