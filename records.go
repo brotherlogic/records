@@ -281,7 +281,7 @@ func main() {
 
 	getLocationFlags := flag.NewFlagSet("GetLocation", flag.ExitOnError)
 	var getName = getLocationFlags.String("name", "", "The name of the location to get")
-	var slot = getLocationFlags.Int("slot", 0, "The slot to retrieve from")
+	var slot = getLocationFlags.Int("slot", 1, "The slot to retrieve from")
 
 	moveToPileFlags := flag.NewFlagSet("MoveToPile", flag.ContinueOnError)
 	var idToMove = moveToPileFlags.Int("id", 0, "Id of record to move")
