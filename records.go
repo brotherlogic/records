@@ -185,7 +185,18 @@ func organise() {
 	}
 
 	for _, move := range moves.Moves {
-		fmt.Printf("MOVE %v\n", move)
+		if move.Old == nil {
+			fmt.Printf("Add to slot %v\n", move.New.Slot)
+			fmt.Printf("%v\n*%v*\n%v\n", move.New.BeforeReleaseId, move.New.ReleaseId, move.New.AfterReleaseId)
+		} else if move.New == nil {
+			fmt.Printf("Remove from slot %v\n", move.Old.Slot)
+			fmt.Printf("%v\n*%v*\n%v\n", move.Old.BeforeReleaseId, move.Old.ReleaseId, move.Old.AfterReleaseId)
+		} else {
+			fmt.Printf("Move from slot %v to slot %v\n", move.Old.Slot, move.New.Slot)
+			fmt.Printf("%v\n*%v*\n%v\n", move.Old.BeforeReleaseId, move.Old.ReleaseId, move.Old.AfterReleaseId)
+			fmt.Printf("to\n")
+			fmt.Printf("%v\n*%v*\n%v\n", move.New.BeforeReleaseId, move.New.ReleaseId, move.New.AfterReleaseId)
+		}
 	}
 }
 
@@ -292,6 +303,7 @@ func main() {
 	updateLocationFlags := flag.NewFlagSet("UpdateLocation", flag.ContinueOnError)
 	var nameToUpdate = updateLocationFlags.String("name", "", "Name of the location to update")
 	var sort = updateLocationFlags.String("sort", "", "Sorting method of the location")
+	var updateFolders = updateLocationFlags.String("folders", "", "Folders to add")
 
 	switch os.Args[1] {
 	case "add":
@@ -333,6 +345,13 @@ func main() {
 				case "by_date":
 					location.Sort = pbo.Location_BY_DATE_ADDED
 				}
+			} else if len(*updateFolders) > 0 {
+				location.FolderIds = make([]int32, 0)
+				for _, folder := range strings.Split(*updateFolders, ",") {
+					folderID, _ := strconv.Atoi(folder)
+					location.FolderIds = append(location.FolderIds, int32(folderID))
+				}
+
 			}
 			log.Printf("HERE: %v", location)
 			updateLocation(location)
