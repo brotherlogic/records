@@ -123,6 +123,26 @@ func getLocation(name string, slot int32) {
 
 }
 
+func getRelease(id int32) *pbd.Release {
+	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	//Move the previous record down to uncategorized
+	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	defer dConn.Close()
+	dClient := pb.NewDiscogsServiceClient(dConn)
+
+	releaseRequest := &pbd.Release{Id: id}
+	rel, _ := dClient.GetSingleRelease(context.Background(), releaseRequest)
+	return rel
+}
+
+func prettyPrintRelease(id int32) string {
+	rel := getRelease(id)
+	return pbd.GetReleaseArtist(*rel) + " - " + rel.Title
+}
+
 func listUncategorized() {
 	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
 	//Move the previous record down to uncategorized
@@ -187,15 +207,15 @@ func organise() {
 	for _, move := range moves.Moves {
 		if move.Old == nil {
 			fmt.Printf("Add to slot %v\n", move.New.Slot)
-			fmt.Printf("%v\n*%v*\n%v\n", move.New.BeforeReleaseId, move.New.ReleaseId, move.New.AfterReleaseId)
+			fmt.Printf("%v\n*%v*\n%v\n", prettyPrintRelease(move.New.BeforeReleaseId), prettyPrintRelease(move.New.ReleaseId), prettyPrintRelease(move.New.AfterReleaseId))
 		} else if move.New == nil {
 			fmt.Printf("Remove from slot %v\n", move.Old.Slot)
-			fmt.Printf("%v\n*%v*\n%v\n", move.Old.BeforeReleaseId, move.Old.ReleaseId, move.Old.AfterReleaseId)
+			fmt.Printf("%v\n*%v*\n%v\n", prettyPrintRelease(move.Old.BeforeReleaseId), prettyPrintRelease(move.Old.ReleaseId), prettyPrintRelease(move.Old.AfterReleaseId))
 		} else {
 			fmt.Printf("Move from slot %v to slot %v\n", move.Old.Slot, move.New.Slot)
-			fmt.Printf("%v\n*%v*\n%v\n", move.Old.BeforeReleaseId, move.Old.ReleaseId, move.Old.AfterReleaseId)
+			fmt.Printf("%v\n*%v*\n%v\n", prettyPrintRelease(move.Old.BeforeReleaseId), prettyPrintRelease(move.Old.ReleaseId), prettyPrintRelease(move.Old.AfterReleaseId))
 			fmt.Printf("to\n")
-			fmt.Printf("%v\n*%v*\n%v\n", move.New.BeforeReleaseId, move.New.ReleaseId, move.New.AfterReleaseId)
+			fmt.Printf("%v\n*%v*\n%v\n", prettyPrintRelease(move.New.BeforeReleaseId), prettyPrintRelease(move.New.ReleaseId), prettyPrintRelease(move.New.AfterReleaseId))
 		}
 	}
 }
