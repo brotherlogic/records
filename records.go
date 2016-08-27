@@ -364,6 +364,8 @@ func main() {
 					location.Sort = pbo.Location_BY_LABEL_CATNO
 				case "by_date":
 					location.Sort = pbo.Location_BY_DATE_ADDED
+				case "by_release":
+					location.Sort = pbo.Location_BY_RELEASE_DATE
 				}
 			} else if len(*updateFolders) > 0 {
 				location.FolderIds = make([]int32, 0)
