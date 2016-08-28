@@ -272,8 +272,12 @@ func locate(id int) {
 	res, _ := client.Locate(context.Background(), &pbd.Release{Id: int32(id)})
 
 	fmt.Printf("In %v, slot %v\n", res.Location.Name, res.Slot)
-	fmt.Printf("Before: %v - %v (%v)\n", pbd.GetReleaseArtist(*res.Before), res.Before.Title, res.Before.Id)
-	fmt.Printf("After:  %v - %v (%v)\n", pbd.GetReleaseArtist(*res.After), res.After.Title, res.After.Id)
+	if res.Before != nil {
+		fmt.Printf("Before: %v - %v (%v)\n", pbd.GetReleaseArtist(*res.Before), res.Before.Title, res.Before.Id)
+	}
+	if res.After != nil {
+		fmt.Printf("After:  %v - %v (%v)\n", pbd.GetReleaseArtist(*res.After), res.After.Title, res.After.Id)
+	}
 }
 
 func moveToPile(id int) {
