@@ -325,6 +325,9 @@ func main() {
 	var sort = updateLocationFlags.String("sort", "", "Sorting method of the location")
 	var updateFolders = updateLocationFlags.String("folders", "", "Folders to add")
 
+	investigateFlags := flag.NewFlagSet("investigate", flag.ExitOnError)
+	var investigateID = investigateFlags.Int("id", 0, "Id of release to investigate")
+
 	switch os.Args[1] {
 	case "add":
 		if err := addFlags.Parse(os.Args[2:]); err == nil {
@@ -377,6 +380,10 @@ func main() {
 			}
 			log.Printf("HERE: %v", location)
 			updateLocation(location)
+		}
+	case "investigate":
+		if err := investigateFlags.Parse(os.Args[2:]); err == nil {
+			fmt.Printf("%v\n", getRelease(int32(*investigateID)))
 		}
 	}
 }
