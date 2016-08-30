@@ -203,6 +203,8 @@ func organise() {
 		panic(err)
 	}
 
+	fmt.Printf("Org from %v to %v", moves.StartTimestamp, moves.EndTimestamp)
+
 	if len(moves.Moves) == 0 {
 		fmt.Printf("No Moves needed\n")
 	}
