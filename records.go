@@ -140,7 +140,10 @@ func getRelease(id int32) *pbd.Release {
 
 func prettyPrintRelease(id int32) string {
 	rel := getRelease(id)
-	return pbd.GetReleaseArtist(*rel) + " - " + rel.Title
+	if rel != nil {
+		return pbd.GetReleaseArtist(*rel) + " - " + rel.Title
+	}
+	return strconv.Itoa(int(id))
 }
 
 func listUncategorized() {
