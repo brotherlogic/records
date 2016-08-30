@@ -352,10 +352,10 @@ func main() {
 	case "uncat":
 		if err := moveToPileFlags.Parse(os.Args[2:]); err == nil && *idToMove > 0 {
 			moveToPile(*idToMove)
+			listUncategorized()
 		} else {
 			listUncategorized()
 		}
-		listUncategorized()
 	case "organise":
 		organise()
 	case "locate":
