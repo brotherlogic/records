@@ -71,7 +71,7 @@ func addRecord(id int) {
 	}
 }
 
-func getLocation(name string, slot int32) {
+func getLocation(name string, slot int32, timestamp int64) {
 	//Move the previous record down to uncategorized
 	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
 	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
@@ -82,7 +82,7 @@ func getLocation(name string, slot int32) {
 
 	defer conn.Close()
 	client := pbo.NewOrganiserServiceClient(conn)
-	locationQuery := &pbo.Location{Name: name}
+	locationQuery := &pbo.Location{Name: name, Timestamp: timestamp}
 	location, err := client.GetLocation(context.Background(), locationQuery)
 
 	fmt.Printf("%v sorted %v\n", location.Name, location.Sort)
@@ -117,7 +117,10 @@ func getLocation(name string, slot int32) {
 
 	for _, release := range location.ReleasesLocation {
 		if release.Slot == slot {
-			fmt.Printf("%v. %v - %v\n", release.Index, pbd.GetReleaseArtist(*relMap[release.ReleaseId]), relMap[release.ReleaseId].Title)
+			fullRelease, err := dClient.GetSingleRelease(context.Background(), &pbd.Release{Id: release.ReleaseId})
+			if err == nil {
+				fmt.Printf("%v. %v - %v\n", release.Index, pbd.GetReleaseArtist(*fullRelease), fullRelease.Title)
+			}
 		}
 	}
 
@@ -399,6 +402,7 @@ func main() {
 	getLocationFlags := flag.NewFlagSet("GetLocation", flag.ExitOnError)
 	var getName = getLocationFlags.String("name", "", "The name of the location to get")
 	var slot = getLocationFlags.Int("slot", 1, "The slot to retrieve from")
+	var timestamp = getLocationFlags.Int64("time", -1, "The timestamp to retrieve")
 
 	moveToPileFlags := flag.NewFlagSet("MoveToPile", flag.ContinueOnError)
 	var idToMove = moveToPileFlags.Int("id", 0, "Id of record to move")
@@ -434,7 +438,7 @@ func main() {
 		}
 	case "getLocation":
 		if err := getLocationFlags.Parse(os.Args[2:]); err == nil {
-			getLocation(*getName, int32(*slot))
+			getLocation(*getName, int32(*slot), *timestamp)
 		}
 	case "listTimes":
 		listCollections()
