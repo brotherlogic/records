@@ -339,6 +339,54 @@ func moveToPile(id int) {
 	}
 }
 
+func printLow(name string) {
+	//Move the previous record down to uncategorized
+	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
+	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer conn.Close()
+	client := pbo.NewOrganiserServiceClient(conn)
+	locationQuery := &pbo.Location{Name: name}
+	location, err := client.GetLocation(context.Background(), locationQuery)
+
+	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	//Move the previous record down to uncategorized
+	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	defer dConn.Close()
+	dClient := pb.NewDiscogsServiceClient(dConn)
+
+	var lowest []*pbd.Release
+	lowestScore := 6
+	for _, folderID := range location.FolderIds {
+		releases, err := dClient.GetReleasesInFolder(context.Background(), &pb.FolderList{Folders: []*pbd.Folder{&pbd.Folder{Id: folderID}}})
+
+		if err != nil {
+			panic(err)
+		}
+
+		for _, release := range releases.Releases {
+			if int(release.Rating) < lowestScore {
+				lowestScore = int(release.Rating)
+				lowest = make([]*pbd.Release, 0)
+				lowest = append(lowest, release)
+			} else if int(release.Rating) == lowestScore {
+				lowest = append(lowest, release)
+			}
+		}
+	}
+
+	for i, release := range lowest {
+		fmt.Printf("%v. %v\n", i, prettyPrintRelease(release.Id))
+	}
+}
+
 func main() {
 	addFlags := flag.NewFlagSet("AddRecord", flag.ExitOnError)
 	var id = addFlags.Int("id", 0, "ID of record to add")
@@ -371,6 +419,9 @@ func main() {
 	var endTimestamp = diffFlags.Int64("end", 0, "End timestamp")
 	var diffSlot = diffFlags.Int("slot", 0, "The slot to check")
 	var diffName = diffFlags.String("name", "", "The folder to check")
+
+	lowFlags := flag.NewFlagSet("low", flag.ExitOnError)
+	var lowFolderName = lowFlags.String("name", "", "Name of the folder to check")
 
 	switch os.Args[1] {
 	case "add":
@@ -439,6 +490,10 @@ func main() {
 				LocationName:   *diffName,
 			}
 			printDiff(differ)
+		}
+	case "low":
+		if err := lowFlags.Parse(os.Args[2:]); err == nil {
+			printLow(*lowFolderName)
 		}
 	}
 }
