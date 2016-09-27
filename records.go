@@ -128,10 +128,9 @@ func getLocation(name string, slot int32, timestamp int64) {
 
 func getRelease(id int32) (*pbd.Release, *pb.ReleaseMetadata) {
 	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
-	//Move the previous record down to uncategorized
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
 	if err != nil {
-		panic(err)
+		return nil, nil
 	}
 	defer dConn.Close()
 	dClient := pb.NewDiscogsServiceClient(dConn)
@@ -210,7 +209,7 @@ func organise() {
 		panic(err)
 	}
 
-	fmt.Printf("Org from %v to %v", moves.StartTimestamp, moves.EndTimestamp)
+	fmt.Printf("Org from %v to %v\n", moves.StartTimestamp, moves.EndTimestamp)
 
 	if len(moves.Moves) == 0 {
 		fmt.Printf("No Moves needed\n")
@@ -339,6 +338,29 @@ func moveToPile(id int) {
 				panic(err)
 			}
 		}
+	}
+}
+
+func printWantlist() {
+	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	defer dConn.Close()
+	dClient := pb.NewDiscogsServiceClient(dConn)
+
+	wants, err := dClient.GetWantlist(context.Background(), &pb.Empty{})
+	if err != nil {
+		panic(err)
+	}
+
+	if len(wants.Want) == 0 {
+		fmt.Printf("No wants recorded\n")
+	}
+
+	for i, want := range wants.Want {
+		fmt.Printf("%v. %v [%v]\n", i, prettyPrintRelease(want.ReleaseId), want.ReleaseId)
 	}
 }
 
@@ -499,5 +521,7 @@ func main() {
 		if err := lowFlags.Parse(os.Args[2:]); err == nil {
 			printLow(*lowFolderName)
 		}
+	case "wantlist":
+		printWantlist()
 	}
 }
