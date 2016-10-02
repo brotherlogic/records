@@ -192,7 +192,7 @@ func listFolders() {
 	}
 }
 
-func organise() {
+func organise(doSlotMoves bool) {
 	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
 	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
 
@@ -216,7 +216,9 @@ func organise() {
 	}
 
 	for _, move := range moves.Moves {
-		printMove(move)
+		if doSlotMoves || !move.SlotMove {
+			printMove(move)
+		}
 	}
 }
 
@@ -449,6 +451,9 @@ func main() {
 	lowFlags := flag.NewFlagSet("low", flag.ExitOnError)
 	var lowFolderName = lowFlags.String("name", "", "Name of the folder to check")
 
+	organiseFlags := flag.NewFlagSet("organise", flag.ContinueOnError)
+	var doSlotsMoves = organiseFlags.Bool("slotmoves", false, "Include slot moves in org")
+
 	switch os.Args[1] {
 	case "add":
 		if err := addFlags.Parse(os.Args[2:]); err == nil {
@@ -474,7 +479,9 @@ func main() {
 			listUncategorized()
 		}
 	case "organise":
-		organise()
+		if err := organiseFlags.Parse(os.Args[2:]); err == nil {
+			organise(*doSlotsMoves)
+		}
 	case "locate":
 		if err := locateFlags.Parse(os.Args[2:]); err == nil && *idToLocate > 0 {
 			locate(*idToLocate)
