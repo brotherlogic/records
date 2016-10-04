@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -343,6 +344,36 @@ func moveToPile(id int) {
 	}
 }
 
+func collapseWantlist() {
+	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	defer dConn.Close()
+	dClient := pb.NewDiscogsServiceClient(dConn)
+	_, err = dClient.CollapseWantlist(context.Background(), &pb.Empty{})
+
+	if err != nil {
+		panic(err)
+	}
+}
+
+func rebuildWantlist() {
+	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	defer dConn.Close()
+	dClient := pb.NewDiscogsServiceClient(dConn)
+	_, err = dClient.RebuildWantlist(context.Background(), &pb.Empty{})
+
+	if err != nil {
+		panic(err)
+	}
+}
+
 func printWantlist() {
 	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
@@ -364,6 +395,24 @@ func printWantlist() {
 	for i, want := range wants.Want {
 		fmt.Printf("%v. %v [%v]\n", i, prettyPrintRelease(want.ReleaseId), want.ReleaseId)
 	}
+}
+
+func getSpend() int {
+	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	defer dConn.Close()
+	dClient := pb.NewDiscogsServiceClient(dConn)
+
+	year := time.Now().Year()
+	month := time.Now().Month()
+	spend, err := dClient.GetMonthlySpend(context.Background(), &pb.SpendRequest{Year: int32(year), Month: int32(month)})
+	if err != nil {
+		panic(err)
+	}
+	return int(spend.TotalSpend)
 }
 
 func printLow(name string) {
@@ -530,5 +579,12 @@ func main() {
 		}
 	case "wantlist":
 		printWantlist()
+	case "collapse":
+		collapseWantlist()
+	case "rebuild":
+		rebuildWantlist()
+	case "printspend":
+		fmt.Printf("Spend = %v\n", getSpend())
 	}
+
 }
