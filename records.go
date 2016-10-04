@@ -224,6 +224,7 @@ func organise(doSlotMoves bool) {
 }
 
 func printMove(move *pbo.LocationMove) {
+	fmt.Printf("----------------")
 	if move.Old == nil {
 		fmt.Printf("Add to slot %v\n", move.New.Slot)
 		fmt.Printf("%v\n*%v*\n%v\n", prettyPrintRelease(move.New.BeforeReleaseId), prettyPrintRelease(move.New.ReleaseId), prettyPrintRelease(move.New.AfterReleaseId))
