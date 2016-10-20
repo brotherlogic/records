@@ -585,7 +585,15 @@ func main() {
 	case "rebuild":
 		rebuildWantlist()
 	case "printspend":
-		fmt.Printf("Spend = %v\n", getSpend())
+		spend := getSpend()
+		fmt.Printf("Spend = %v\n", spend)
+		if spend > 30000 {
+			fmt.Printf("Collapsing Wantlist")
+			collapseWantlist()
+		} else {
+			fmt.Printf("Restoring Wantlist")
+			rebuildWantlist()
+		}
 	}
 
 }
