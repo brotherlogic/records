@@ -394,7 +394,11 @@ func printWantlist() {
 	}
 
 	for i, want := range wants.Want {
-		fmt.Printf("%v. %v [%v]\n", i, prettyPrintRelease(want.ReleaseId), want.ReleaseId)
+		if want.Valued {
+			fmt.Printf("%v. *** %v [%v]\n", i, prettyPrintRelease(want.ReleaseId), want.ReleaseId)
+		} else {
+			fmt.Printf("%v. %v [%v]\n", i, prettyPrintRelease(want.ReleaseId), want.ReleaseId)
+		}
 	}
 }
 
@@ -414,6 +418,24 @@ func getSpend() int {
 		panic(err)
 	}
 	return int(spend.TotalSpend)
+}
+
+func setWant(id int, wantValue bool) {
+	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	defer dConn.Close()
+	dClient := pb.NewDiscogsServiceClient(dConn)
+
+	want := &pb.Want{ReleaseId: int32(id), Valued: wantValue}
+	wantRet, err := dClient.EditWant(context.Background(), want)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("%v\n", wantRet)
 }
 
 func printLow(name string) {
@@ -504,6 +526,10 @@ func main() {
 	organiseFlags := flag.NewFlagSet("organise", flag.ContinueOnError)
 	var doSlotsMoves = organiseFlags.Bool("slotmoves", false, "Include slot moves in org")
 
+	wantFlags := flag.NewFlagSet("wants", flag.ExitOnError)
+	var wantID = wantFlags.Int("id", 0, "Id of the want")
+	var wantValue = wantFlags.Bool("want", false, "Whether to value the want")
+
 	switch os.Args[1] {
 	case "add":
 		if err := addFlags.Parse(os.Args[2:]); err == nil {
@@ -593,6 +619,10 @@ func main() {
 		} else {
 			fmt.Printf("Restoring Wantlist")
 			rebuildWantlist()
+		}
+	case "want":
+		if err := wantFlags.Parse(os.Args[2:]); err == nil {
+			setWant(*wantID, *wantValue)
 		}
 	}
 
