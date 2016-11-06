@@ -375,6 +375,21 @@ func rebuildWantlist() {
 	}
 }
 
+func deleteWant(id int) {
+	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	defer dConn.Close()
+	dClient := pb.NewDiscogsServiceClient(dConn)
+	_, err = dClient.DeleteWant(context.Background(), &pb.Want{ReleaseId: int32(id)})
+
+	if err != nil {
+		panic(err)
+	}
+}
+
 func printWantlist() {
 	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
@@ -530,6 +545,9 @@ func main() {
 	var wantID = wantFlags.Int("id", 0, "Id of the want")
 	var wantValue = wantFlags.Bool("want", false, "Whether to value the want")
 
+	deleteWantFlags := flag.NewFlagSet("deletewant", flag.ExitOnError)
+	var deleteWantID = deleteWantFlags.Int("id", 0, "Id of want to delete")
+
 	switch os.Args[1] {
 	case "add":
 		if err := addFlags.Parse(os.Args[2:]); err == nil {
@@ -623,6 +641,10 @@ func main() {
 	case "want":
 		if err := wantFlags.Parse(os.Args[2:]); err == nil {
 			setWant(*wantID, *wantValue)
+		}
+	case "deletewant":
+		if err := deleteWantFlags.Parse(os.Args[2:]); err == nil {
+			deleteWant(*deleteWantID)
 		}
 	}
 
