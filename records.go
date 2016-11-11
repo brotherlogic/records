@@ -417,7 +417,7 @@ func printWantlist() {
 	}
 }
 
-func getSpend() int {
+func getSpend() (int, []*pb.MetadataUpdate) {
 	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
 	if err != nil {
@@ -432,7 +432,7 @@ func getSpend() int {
 	if err != nil {
 		panic(err)
 	}
-	return int(spend.TotalSpend)
+	return int(spend.TotalSpend), spend.GetSpends()
 }
 
 func setWant(id int, wantValue bool) {
@@ -545,6 +545,9 @@ func main() {
 	var wantID = wantFlags.Int("id", 0, "Id of the want")
 	var wantValue = wantFlags.Bool("want", false, "Whether to value the want")
 
+	spendFlags := flag.NewFlagSet("spend", flag.ContinueOnError)
+	var doList = spendFlags.Bool("list", false, "Show the records spent on")
+
 	deleteWantFlags := flag.NewFlagSet("deletewant", flag.ExitOnError)
 	var deleteWantID = deleteWantFlags.Int("id", 0, "Id of want to delete")
 
@@ -629,14 +632,22 @@ func main() {
 	case "rebuild":
 		rebuildWantlist()
 	case "printspend":
-		spend := getSpend()
-		fmt.Printf("Spend = %v\n", spend)
-		if spend > 30000 {
-			fmt.Printf("Collapsing Wantlist")
-			collapseWantlist()
-		} else {
-			fmt.Printf("Restoring Wantlist")
-			rebuildWantlist()
+		spend, records := getSpend()
+		if err := spendFlags.Parse(os.Args[2:]); err == nil {
+			fmt.Printf("Spend = %v[%v]\n", spend, *doList)
+			if *doList {
+				for i, record := range records {
+					fmt.Printf("%v. %v [%v]\n", i, prettyPrintRelease(record.Release.Id), record.Update.Cost)
+				}
+			} else {
+				if spend > 30000 {
+					fmt.Printf("Collapsing Wantlist")
+					collapseWantlist()
+				} else {
+					fmt.Printf("Restoring Wantlist")
+					rebuildWantlist()
+				}
+			}
 		}
 	case "want":
 		if err := wantFlags.Parse(os.Args[2:]); err == nil {
