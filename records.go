@@ -142,6 +142,19 @@ func getRelease(id int32) (*pbd.Release, *pb.ReleaseMetadata) {
 	return rel, meta
 }
 
+func getAllReleases() []*pbd.Release {
+	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+	if err != nil {
+		log.Printf("FAIL %v", err)
+	}
+	defer dConn.Close()
+	dClient := pb.NewDiscogsServiceClient(dConn)
+
+	releases, _ := dClient.GetCollection(context.Background(), &pb.Empty{})
+	return releases.Releases
+}
+
 func prettyPrintRelease(id int32) string {
 	rel, _ := getRelease(id)
 	if rel != nil {
@@ -383,10 +396,18 @@ func deleteWant(id int) {
 	}
 	defer dConn.Close()
 	dClient := pb.NewDiscogsServiceClient(dConn)
-	_, err = dClient.DeleteWant(context.Background(), &pb.Want{ReleaseId: int32(id)})
+	res, err := dClient.DeleteWant(context.Background(), &pb.Want{ReleaseId: int32(id)})
 
 	if err != nil {
 		panic(err)
+	}
+
+	for i, want := range res.Want {
+		if want.Valued {
+			fmt.Printf("%v. *** %v [%v]\n", i, prettyPrintRelease(want.ReleaseId), want.ReleaseId)
+		} else {
+			fmt.Printf("%v. %v [%v]\n", i, prettyPrintRelease(want.ReleaseId), want.ReleaseId)
+		}
 	}
 }
 
@@ -528,6 +549,7 @@ func main() {
 
 	investigateFlags := flag.NewFlagSet("investigate", flag.ExitOnError)
 	var investigateID = investigateFlags.Int("id", 0, "Id of release to investigate")
+	var investigateYear = investigateFlags.Int("year", 0, "Year of releases to list")
 
 	diffFlags := flag.NewFlagSet("diff", flag.ExitOnError)
 	var startTimestamp = diffFlags.Int64("start", 0, "Start timestamp")
@@ -608,8 +630,17 @@ func main() {
 		}
 	case "investigate":
 		if err := investigateFlags.Parse(os.Args[2:]); err == nil {
-			rel, meta := getRelease(int32(*investigateID))
-			fmt.Printf("%v\n%v\n", rel, meta)
+			if *investigateYear > 0 {
+				for _, rel := range getAllReleases() {
+					_, meta := getRelease(rel.Id)
+					if time.Unix(meta.DateAdded, 0).Year() == int(*investigateYear) {
+						fmt.Printf("%v\n", prettyPrintRelease(rel.Id))
+					}
+				}
+			} else {
+				rel, meta := getRelease(int32(*investigateID))
+				fmt.Printf("%v\n%v\n", rel, meta)
+			}
 		}
 	case "diff":
 		if err := diffFlags.Parse(os.Args[2:]); err == nil {
