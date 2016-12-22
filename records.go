@@ -546,6 +546,7 @@ func main() {
 	var nameToUpdate = updateLocationFlags.String("name", "", "Name of the location to update")
 	var sort = updateLocationFlags.String("sort", "", "Sorting method of the location")
 	var updateFolders = updateLocationFlags.String("folders", "", "Folders to add")
+	var numSlots = updateLocationFlags.Int("slots", -1, "The number of slots to update to")
 
 	investigateFlags := flag.NewFlagSet("investigate", flag.ExitOnError)
 	var investigateID = investigateFlags.Int("id", 0, "Id of release to investigate")
@@ -623,9 +624,9 @@ func main() {
 					folderID, _ := strconv.Atoi(folder)
 					location.FolderIds = append(location.FolderIds, int32(folderID))
 				}
-
+			} else if *numSlots > 0 {
+				location.Units = int32(*numSlots)
 			}
-			log.Printf("HERE: %v", location)
 			updateLocation(location)
 		}
 	case "investigate":
