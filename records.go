@@ -345,6 +345,9 @@ func moveToPile(id int) {
 	dClient := pb.NewDiscogsServiceClient(dConn)
 
 	releases, err := dClient.GetReleasesInFolder(context.Background(), &pb.FolderList{Folders: []*pbd.Folder{&pbd.Folder{Id: 1}}})
+	if err != nil {
+		log.Fatalf("Fatal error in getting releases: %v", err)
+	}
 
 	for _, release := range releases.Releases {
 		if release.Id == int32(id) {
@@ -487,6 +490,9 @@ func printLow(name string) {
 	client := pbo.NewOrganiserServiceClient(conn)
 	locationQuery := &pbo.Location{Name: name}
 	location, err := client.GetLocation(context.Background(), locationQuery)
+	if err != nil {
+		log.Fatalf("Fatal error in getting location: %v", err)
+	}
 
 	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
 	//Move the previous record down to uncategorized
@@ -520,6 +526,23 @@ func printLow(name string) {
 	for i, release := range lowest {
 		fmt.Printf("%v. %v\n", i, prettyPrintRelease(release.Id))
 	}
+}
+
+func updateMeta(ID int, date string) {
+	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	defer dConn.Close()
+	dClient := pb.NewDiscogsServiceClient(dConn)
+
+	dateAdded, err := time.Parse("02/01/06", date)
+	if err != nil {
+		log.Fatalf("Failure to parse date: %v", err)
+	}
+	update := &pb.MetadataUpdate{Release: &pbd.Release{Id: int32(ID)}, Update: &pb.ReleaseMetadata{DateAdded: dateAdded.Unix()}}
+	dClient.UpdateMetadata(context.Background(), update)
 }
 
 func main() {
@@ -573,6 +596,10 @@ func main() {
 
 	deleteWantFlags := flag.NewFlagSet("deletewant", flag.ExitOnError)
 	var deleteWantID = deleteWantFlags.Int("id", 0, "Id of want to delete")
+
+	updateDateAddedFlags := flag.NewFlagSet("setadded", flag.ExitOnError)
+	var udaID = updateDateAddedFlags.Int("id", 0, "Id of record to update")
+	var udaDate = updateDateAddedFlags.String("date", "", "The date to update to.")
 
 	switch os.Args[1] {
 	case "add":
@@ -688,6 +715,10 @@ func main() {
 	case "deletewant":
 		if err := deleteWantFlags.Parse(os.Args[2:]); err == nil {
 			deleteWant(*deleteWantID)
+		}
+	case "updatemeta":
+		if err := updateDateAddedFlags.Parse(os.Args[2:]); err == nil {
+			updateMeta(*udaID, *udaDate)
 		}
 	}
 
