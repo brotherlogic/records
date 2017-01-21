@@ -451,8 +451,7 @@ func getSpend() (int, []*pb.MetadataUpdate) {
 	dClient := pb.NewDiscogsServiceClient(dConn)
 
 	year := time.Now().Year()
-	month := time.Now().Month()
-	spend, err := dClient.GetMonthlySpend(context.Background(), &pb.SpendRequest{Year: int32(year), Month: int32(month)})
+	spend, err := dClient.GetSpend(context.Background(), &pb.SpendRequest{Year: int32(year)})
 	if err != nil {
 		panic(err)
 	}
@@ -692,14 +691,15 @@ func main() {
 		rebuildWantlist()
 	case "printspend":
 		spend, records := getSpend()
+		allowedSpend := ((20000.0 * 12.0) / 365.0) * float32(time.Now().YearDay())
 		if err := spendFlags.Parse(os.Args[2:]); err == nil {
-			fmt.Printf("Spend = %v[%v]\n", spend, *doList)
+			fmt.Printf("Spend = %v / %v [%v]\n", spend, allowedSpend, *doList)
 			if *doList {
 				for i, record := range records {
 					fmt.Printf("%v. %v [%v]\n", i, prettyPrintRelease(record.Release.Id), record.Update.Cost)
 				}
 			} else {
-				if spend > 30000 {
+				if float32(spend) > allowedSpend {
 					fmt.Printf("Collapsing Wantlist")
 					collapseWantlist()
 				} else {
