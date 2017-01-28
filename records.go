@@ -691,7 +691,7 @@ func main() {
 		rebuildWantlist()
 	case "printspend":
 		spend, records := getSpend()
-		allowedSpend := ((20000.0 * 12.0) / 365.0) * float32(time.Now().YearDay())
+		allowedSpend := ((30000.0 * 12.0) / 365.0) * float32(time.Now().YearDay())
 		if err := spendFlags.Parse(os.Args[2:]); err == nil {
 			fmt.Printf("Spend = %v / %v [%v]\n", spend, allowedSpend, *doList)
 			if *doList {
