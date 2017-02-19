@@ -476,7 +476,7 @@ func setWant(id int, wantValue bool) {
 	fmt.Printf("%v\n", wantRet)
 }
 
-func printLow(name string) {
+func printLow(name string, others bool) {
 	//Move the previous record down to uncategorized
 	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
 	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
@@ -523,7 +523,10 @@ func printLow(name string) {
 	}
 
 	for i, release := range lowest {
-		fmt.Printf("%v. %v\n", i, prettyPrintRelease(release.Id))
+		_, meta := getRelease(release.Id)
+		if !others || meta.Others {
+			fmt.Printf("%v [%v]. %v\n", i, release.Id, prettyPrintRelease(release.Id))
+		}
 	}
 }
 
@@ -542,6 +545,28 @@ func updateMeta(ID int, date string) {
 	}
 	update := &pb.MetadataUpdate{Release: &pbd.Release{Id: int32(ID)}, Update: &pb.ReleaseMetadata{DateAdded: dateAdded.Unix()}}
 	dClient.UpdateMetadata(context.Background(), update)
+}
+
+func sell(ID int) {
+	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+
+	//Move the previous record down to uncategorized
+	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer dConn.Close()
+	dClient := pb.NewDiscogsServiceClient(dConn)
+
+	release, _ := getRelease(int32(ID))
+	folderAdd := &pb.ReleaseMove{Release: release, NewFolderId: int32(488127)}
+
+	_, err = dClient.MoveToFolder(context.Background(), folderAdd)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func main() {
@@ -582,6 +607,7 @@ func main() {
 
 	lowFlags := flag.NewFlagSet("low", flag.ExitOnError)
 	var lowFolderName = lowFlags.String("name", "", "Name of the folder to check")
+	var showOthersOnly = lowFlags.Bool("others", false, "Show only records that we have others of")
 
 	organiseFlags := flag.NewFlagSet("organise", flag.ContinueOnError)
 	var doSlotsMoves = organiseFlags.Bool("slotmoves", false, "Include slot moves in org")
@@ -599,6 +625,9 @@ func main() {
 	updateDateAddedFlags := flag.NewFlagSet("setadded", flag.ExitOnError)
 	var udaID = updateDateAddedFlags.Int("id", 0, "Id of record to update")
 	var udaDate = updateDateAddedFlags.String("date", "", "The date to update to.")
+
+	sellFlags := flag.NewFlagSet("sell", flag.ExitOnError)
+	var sellID = sellFlags.Int("id", 0, "Id of record to sell")
 
 	switch os.Args[1] {
 	case "add":
@@ -681,7 +710,7 @@ func main() {
 		}
 	case "low":
 		if err := lowFlags.Parse(os.Args[2:]); err == nil {
-			printLow(*lowFolderName)
+			printLow(*lowFolderName, *showOthersOnly)
 		}
 	case "wantlist":
 		printWantlist()
@@ -719,6 +748,10 @@ func main() {
 	case "updatemeta":
 		if err := updateDateAddedFlags.Parse(os.Args[2:]); err == nil {
 			updateMeta(*udaID, *udaDate)
+		}
+	case "sell":
+		if err := sellFlags.Parse(os.Args[2:]); err == nil {
+			sell(*sellID)
 		}
 	}
 
