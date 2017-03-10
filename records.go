@@ -569,6 +569,76 @@ func sell(ID int) {
 	}
 }
 
+func printTidy(place string) {
+	//Move the previous record down to uncategorized
+	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
+	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer conn.Close()
+	client := pbo.NewOrganiserServiceClient(conn)
+	locationQuery := &pbo.Location{Name: place, Timestamp: -1}
+	location, err := client.GetLocation(context.Background(), locationQuery)
+
+	if err != nil {
+		panic(err)
+	}
+	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	//Move the previous record down to uncategorized
+	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	defer dConn.Close()
+	dClient := pb.NewDiscogsServiceClient(dConn)
+
+	var relMap map[int32]*pbd.Release
+	relMap = make(map[int32]*pbd.Release)
+
+	for _, folderID := range location.FolderIds {
+		releases, err := dClient.GetReleasesInFolder(context.Background(), &pb.FolderList{Folders: []*pbd.Folder{&pbd.Folder{Id: folderID}}})
+
+		if err != nil {
+			log.Printf("Cannot retrieve folder %v", folderID)
+			panic(err)
+		}
+
+		for _, rel := range releases.Releases {
+			relMap[rel.Id] = rel
+		}
+	}
+
+	bestRelease := make(map[int32]*pbd.Release)
+	bestIndex := make(map[int32]int32)
+	for _, release := range location.ReleasesLocation {
+		fullRelease, err := dClient.GetSingleRelease(context.Background(), &pbd.Release{Id: release.ReleaseId})
+		if err == nil {
+			if _, ok := bestIndex[release.Slot]; ok {
+				if bestIndex[release.Slot] < release.Index {
+					bestIndex[release.Slot] = release.Index
+					bestRelease[release.Slot] = fullRelease
+				}
+			} else {
+				bestIndex[release.Slot] = release.Index
+				bestRelease[release.Slot] = fullRelease
+			}
+		}
+	}
+
+	slotv := int32(1)
+	for slotv > 0 {
+		if _, ok := bestIndex[slotv]; ok {
+			fmt.Printf("%v. %v - %v\n", slotv, pbd.GetReleaseArtist(*bestRelease[slotv]), bestRelease[slotv].Title)
+			slotv++
+		} else {
+			slotv = -1
+		}
+	}
+}
+
 func main() {
 	addFlags := flag.NewFlagSet("AddRecord", flag.ExitOnError)
 	var id = addFlags.Int("id", 0, "ID of record to add")
@@ -628,6 +698,9 @@ func main() {
 
 	sellFlags := flag.NewFlagSet("sell", flag.ExitOnError)
 	var sellID = sellFlags.Int("id", 0, "Id of record to sell")
+
+	printTidyFlags := flag.NewFlagSet("printtidy", flag.ExitOnError)
+	var ptLoc = printTidyFlags.String("name", "", "The folder to print")
 
 	switch os.Args[1] {
 	case "add":
@@ -752,6 +825,10 @@ func main() {
 	case "sell":
 		if err := sellFlags.Parse(os.Args[2:]); err == nil {
 			sell(*sellID)
+		}
+	case "printtidy":
+		if err := printTidyFlags.Parse(os.Args[2:]); err == nil {
+			printTidy(*ptLoc)
 		}
 	}
 
