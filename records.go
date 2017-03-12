@@ -36,7 +36,7 @@ func addLocation(name string, units int, folders string) {
 	}
 
 	//Move the previous record down to uncategorized
-	dServer, dPort := getIP("recordsorganiser", "10.0.1.17", 50055)
+	dServer, dPort := getIP("recordsorganiser", "192.168.86.34", 50055)
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
 
 	if err != nil {
@@ -51,7 +51,7 @@ func addLocation(name string, units int, folders string) {
 }
 
 func addRecord(id int) {
-	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dServer, dPort := getIP("discogssyncer", "192.168.86.34", 50055)
 
 	//Move the previous record down to uncategorized
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
@@ -74,7 +74,7 @@ func addRecord(id int) {
 
 func getLocation(name string, slot int32, timestamp int64) {
 	//Move the previous record down to uncategorized
-	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
+	server, port := getIP("recordsorganiser", "192.168.86.34", 50055)
 	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
 
 	if err != nil {
@@ -91,7 +91,7 @@ func getLocation(name string, slot int32, timestamp int64) {
 	if err != nil {
 		panic(err)
 	}
-	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dServer, dPort := getIP("discogssyncer", "192.168.86.34", 50055)
 	//Move the previous record down to uncategorized
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
 	if err != nil {
@@ -128,7 +128,7 @@ func getLocation(name string, slot int32, timestamp int64) {
 }
 
 func getRelease(id int32) (*pbd.Release, *pb.ReleaseMetadata) {
-	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dServer, dPort := getIP("discogssyncer", "192.168.86.34", 50055)
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
 	if err != nil {
 		return nil, nil
@@ -143,7 +143,7 @@ func getRelease(id int32) (*pbd.Release, *pb.ReleaseMetadata) {
 }
 
 func getAllReleases() []*pbd.Release {
-	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dServer, dPort := getIP("discogssyncer", "192.168.86.34", 50055)
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
 	if err != nil {
 		log.Printf("FAIL %v", err)
@@ -167,7 +167,7 @@ func prettyPrintRelease(id int32) string {
 }
 
 func listUncategorized() {
-	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dServer, dPort := getIP("discogssyncer", "192.168.86.34", 50055)
 	//Move the previous record down to uncategorized
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
 	if err != nil {
@@ -186,7 +186,7 @@ func listUncategorized() {
 	}
 }
 func listFolders() {
-	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
+	server, port := getIP("recordsorganiser", "192.168.86.34", 50055)
 	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
 
 	if err != nil {
@@ -207,7 +207,7 @@ func listFolders() {
 }
 
 func organise(doSlotMoves bool) {
-	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
+	server, port := getIP("recordsorganiser", "192.168.86.34", 50055)
 	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
 
 	if err != nil {
@@ -253,7 +253,7 @@ func printMove(move *pbo.LocationMove) {
 }
 
 func updateLocation(loc *pbo.Location) {
-	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
+	server, port := getIP("recordsorganiser", "192.168.86.34", 50055)
 	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
 
 	if err != nil {
@@ -267,7 +267,7 @@ func updateLocation(loc *pbo.Location) {
 }
 
 func listCollections() {
-	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
+	server, port := getIP("recordsorganiser", "192.168.86.34", 50055)
 	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
 
 	if err != nil {
@@ -292,7 +292,7 @@ func listCollections() {
 }
 
 func printDiff(diffRequest *pbo.DiffRequest) {
-	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
+	server, port := getIP("recordsorganiser", "192.168.86.34", 50055)
 	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
 
 	if err != nil {
@@ -313,7 +313,7 @@ func printDiff(diffRequest *pbo.DiffRequest) {
 	}
 }
 func locate(id int) {
-	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
+	server, port := getIP("recordsorganiser", "192.168.86.34", 50055)
 	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
 
 	if err != nil {
@@ -335,7 +335,7 @@ func locate(id int) {
 
 func moveToPile(id int) {
 	log.Printf("Moving")
-	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dServer, dPort := getIP("discogssyncer", "192.168.86.34", 50055)
 	//Move the previous record down to uncategorized
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
 	if err != nil {
@@ -362,7 +362,7 @@ func moveToPile(id int) {
 }
 
 func collapseWantlist() {
-	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dServer, dPort := getIP("discogssyncer", "192.168.86.34", 50055)
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
 	if err != nil {
 		panic(err)
@@ -377,7 +377,7 @@ func collapseWantlist() {
 }
 
 func rebuildWantlist() {
-	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dServer, dPort := getIP("discogssyncer", "192.168.86.34", 50055)
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
 	if err != nil {
 		panic(err)
@@ -392,7 +392,7 @@ func rebuildWantlist() {
 }
 
 func deleteWant(id int) {
-	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dServer, dPort := getIP("discogssyncer", "192.168.86.34", 50055)
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
 	if err != nil {
 		panic(err)
@@ -415,7 +415,7 @@ func deleteWant(id int) {
 }
 
 func printWantlist() {
-	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dServer, dPort := getIP("discogssyncer", "192.168.86.34", 50055)
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
 	if err != nil {
 		panic(err)
@@ -442,7 +442,7 @@ func printWantlist() {
 }
 
 func getSpend() (int, []*pb.MetadataUpdate) {
-	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dServer, dPort := getIP("discogssyncer", "192.168.86.34", 50055)
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
 	if err != nil {
 		panic(err)
@@ -459,7 +459,7 @@ func getSpend() (int, []*pb.MetadataUpdate) {
 }
 
 func setWant(id int, wantValue bool) {
-	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dServer, dPort := getIP("discogssyncer", "192.168.86.34", 50055)
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
 	if err != nil {
 		panic(err)
@@ -478,7 +478,7 @@ func setWant(id int, wantValue bool) {
 
 func printLow(name string, others bool) {
 	//Move the previous record down to uncategorized
-	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
+	server, port := getIP("recordsorganiser", "192.168.86.34", 50055)
 	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
 
 	if err != nil {
@@ -493,7 +493,7 @@ func printLow(name string, others bool) {
 		log.Fatalf("Fatal error in getting location: %v", err)
 	}
 
-	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dServer, dPort := getIP("discogssyncer", "192.168.86.34", 50055)
 	//Move the previous record down to uncategorized
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
 	if err != nil {
@@ -531,7 +531,7 @@ func printLow(name string, others bool) {
 }
 
 func updateMeta(ID int, date string) {
-	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dServer, dPort := getIP("discogssyncer", "192.168.86.34", 50055)
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
 	if err != nil {
 		panic(err)
@@ -548,7 +548,7 @@ func updateMeta(ID int, date string) {
 }
 
 func sell(ID int) {
-	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dServer, dPort := getIP("discogssyncer", "192.168.86.34", 50055)
 
 	//Move the previous record down to uncategorized
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
@@ -571,7 +571,7 @@ func sell(ID int) {
 
 func printTidy(place string) {
 	//Move the previous record down to uncategorized
-	server, port := getIP("recordsorganiser", "10.0.1.17", 50055)
+	server, port := getIP("recordsorganiser", "192.168.86.34", 50055)
 	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
 
 	if err != nil {
@@ -586,7 +586,7 @@ func printTidy(place string) {
 	if err != nil {
 		panic(err)
 	}
-	dServer, dPort := getIP("discogssyncer", "10.0.1.17", 50055)
+	dServer, dPort := getIP("discogssyncer", "192.168.86.34", 50055)
 	//Move the previous record down to uncategorized
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
 	if err != nil {
