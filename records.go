@@ -451,9 +451,11 @@ func getSpend() (int, []*pb.MetadataUpdate) {
 	dClient := pb.NewDiscogsServiceClient(dConn)
 
 	//Two month rolling average
-	now := time.Now()
-	before := now.AddDate(0, -2, 0)
-	spend, err := dClient.GetSpend(context.Background(), &pb.SpendRequest{Lower: before.Unix(), Upper: now.Unix()})
+	quarter := time.Now().YearDay() % 91
+	ys := time.Date(time.Now().Year(), 1, 1, 0, 0, 0, 0, time.UTC)
+	start := ys.AddDate(0, 0, 91*(quarter-1))
+	end := ys.AddDate(0, 0, 91*quarter)
+	spend, err := dClient.GetSpend(context.Background(), &pb.SpendRequest{Lower: start.Unix(), Upper: end.Unix()})
 	if err != nil {
 		panic(err)
 	}
@@ -795,16 +797,17 @@ func main() {
 		rebuildWantlist()
 	case "printspend":
 		spend, records := getSpend()
+		n := time.Now()
 		//Allowed spend is $400 dollars over two months
-		allowedSpend := 40000.0 * 2.0
+		allowedSpendPerQuarter := 40000.0 * 3.0 * float64(n.YearDay()%91) / 91.0
 		if err := spendFlags.Parse(os.Args[2:]); err == nil {
-			fmt.Printf("Spend = %v / %v [%v]\n", spend, allowedSpend, *doList)
+			fmt.Printf("Spend = %v / %v [%v]\n", spend, allowedSpendPerQuarter, *doList)
 			if *doList {
 				for i, record := range records {
 					fmt.Printf("%v. %v [%v]\n", i, prettyPrintRelease(record.Release.Id), record.Update.Cost)
 				}
 			} else {
-				if float64(spend) > allowedSpend {
+				if float64(spend) > allowedSpendPerQuarter {
 					fmt.Printf("Collapsing Wantlist")
 					collapseWantlist()
 				} else {
