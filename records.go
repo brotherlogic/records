@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"strconv"
@@ -19,12 +20,14 @@ import (
 )
 
 func getIP(servername string, ip string, port int) (string, int) {
+	log.Printf("Getting %v", servername)
 	conn, _ := grpc.Dial(ip+":"+strconv.Itoa(port), grpc.WithInsecure())
 	defer conn.Close()
 
 	registry := pbdi.NewDiscoveryServiceClient(conn)
 	entry := pbdi.RegistryEntry{Name: servername}
-	r, _ := registry.Discover(context.Background(), &entry)
+	r, err := registry.Discover(context.Background(), &entry)
+	log.Printf("Got %v (%v)", r, err)
 	return r.Ip, int(r.Port)
 }
 
@@ -451,11 +454,15 @@ func getSpend() (int, []*pb.MetadataUpdate) {
 	dClient := pb.NewDiscogsServiceClient(dConn)
 
 	//Two month rolling average
-	quarter := time.Now().YearDay() % 91
+	quarter := time.Now().YearDay()/91 + 1
 	ys := time.Date(time.Now().Year(), 1, 1, 0, 0, 0, 0, time.UTC)
+	log.Printf("DATE = %v", ys)
 	start := ys.AddDate(0, 0, 91*(quarter-1))
+	log.Printf("NOW %v from %v -> %v", start, 91*(quarter-1), time.Now().YearDay()/91)
 	end := ys.AddDate(0, 0, 91*quarter)
-	spend, err := dClient.GetSpend(context.Background(), &pb.SpendRequest{Lower: start.Unix(), Upper: end.Unix()})
+	req := &pb.SpendRequest{Lower: start.Unix(), Upper: end.Unix()}
+	log.Printf("Spend Request: %v", req)
+	spend, err := dClient.GetSpend(context.Background(), req)
 	if err != nil {
 		panic(err)
 	}
@@ -706,6 +713,14 @@ func main() {
 	printTidyFlags := flag.NewFlagSet("printtidy", flag.ExitOnError)
 	var ptLoc = printTidyFlags.String("name", "", "The folder to print")
 
+	var quiet = flag.Bool("quiet", true, "Show all output")
+	flag.Parse()
+
+	if *quiet {
+		log.SetFlags(0)
+		log.SetOutput(ioutil.Discard)
+	}
+
 	switch os.Args[1] {
 	case "add":
 		if err := addFlags.Parse(os.Args[2:]); err == nil {
@@ -814,6 +829,7 @@ func main() {
 					fmt.Printf("Restoring Wantlist")
 					rebuildWantlist()
 				}
+				log.Printf("WANTLIST")
 			}
 		}
 	case "want":
