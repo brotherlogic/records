@@ -20,14 +20,15 @@ import (
 )
 
 func getIP(servername string, ip string, port int) (string, int) {
-	log.Printf("Getting %v", servername)
 	conn, _ := grpc.Dial(ip+":"+strconv.Itoa(port), grpc.WithInsecure())
 	defer conn.Close()
 
 	registry := pbdi.NewDiscoveryServiceClient(conn)
 	entry := pbdi.RegistryEntry{Name: servername}
 	r, err := registry.Discover(context.Background(), &entry)
-	log.Printf("Got %v (%v)", r, err)
+	if err != nil {
+		return "", -1
+	}
 	return r.Ip, int(r.Port)
 }
 
