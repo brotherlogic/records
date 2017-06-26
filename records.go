@@ -598,6 +598,18 @@ func printTidy(place string) {
 	if err != nil {
 		panic(err)
 	}
+
+	//Print out potential infractions
+	infractions, err := client.CleanLocation(context.Background(), location)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Infractions:\n")
+	for _, inf := range infractions.Entries {
+		fmt.Printf("%v\n", prettyPrintRelease(inf.Id))
+	}
+
 	dServer, dPort := getIP("discogssyncer")
 	//Move the previous record down to uncategorized
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
@@ -676,6 +688,7 @@ func main() {
 	var sort = updateLocationFlags.String("sort", "", "Sorting method of the location")
 	var updateFolders = updateLocationFlags.String("folders", "", "Folders to add")
 	var numSlots = updateLocationFlags.Int("slots", -1, "The number of slots to update to")
+	var formatexp = updateLocationFlags.String("format", "", "The format test")
 
 	investigateFlags := flag.NewFlagSet("investigate", flag.ExitOnError)
 	var investigateID = investigateFlags.Int("id", 0, "Id of release to investigate")
@@ -774,6 +787,8 @@ func main() {
 				}
 			} else if *numSlots > 0 {
 				location.Units = int32(*numSlots)
+			} else if *formatexp != "" {
+				location.ExpectedFormat = *formatexp
 			}
 			updateLocation(location)
 		}
