@@ -607,7 +607,7 @@ func printTidy(place string) {
 
 	fmt.Printf("Infractions:\n")
 	for _, inf := range infractions.Entries {
-		fmt.Printf("%v\n", prettyPrintRelease(inf.Id))
+		fmt.Printf("%v.%v\n", inf.Id, prettyPrintRelease(inf.Id))
 	}
 
 	dServer, dPort := getIP("discogssyncer")
