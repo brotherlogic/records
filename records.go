@@ -90,6 +90,10 @@ func getLocation(name string, slot int32, timestamp int64) {
 	locationQuery := &pbo.Location{Name: name, Timestamp: timestamp}
 	location, err := client.GetLocation(context.Background(), locationQuery)
 
+	if err != nil {
+		panic(err)
+	}
+
 	fmt.Printf("%v sorted %v\n", location.Name, location.Sort)
 
 	if err != nil {
