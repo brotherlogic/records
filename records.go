@@ -369,6 +369,35 @@ func moveToPile(id int) {
 	}
 }
 
+func move(id int, folderID int) {
+	log.Printf("Moving")
+	dServer, dPort := getIP("discogssyncer")
+	//Move the previous record down to uncategorized
+	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	defer dConn.Close()
+	dClient := pb.NewDiscogsServiceClient(dConn)
+
+	r, _ := dClient.GetSingleRelease(context.Background(), &pbd.Release{Id: int32(id)})
+	releases, err := dClient.GetReleasesInFolder(context.Background(), &pb.FolderList{Folders: []*pbd.Folder{&pbd.Folder{Id: r.FolderId}}})
+	if err != nil {
+		log.Fatalf("Fatal error in getting releases: %v", err)
+	}
+
+	for _, release := range releases.Releases {
+		if release.Id == int32(id) {
+			move := &pb.ReleaseMove{Release: &pbd.Release{Id: int32(id), FolderId: release.FolderId, InstanceId: release.InstanceId}, NewFolderId: int32(folderID)}
+			_, err = dClient.MoveToFolder(context.Background(), move)
+			log.Printf("MOVED %v from %v", move, release)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+}
+
 func collapseWantlist() {
 	dServer, dPort := getIP("discogssyncer")
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
@@ -684,6 +713,10 @@ func main() {
 	moveToPileFlags := flag.NewFlagSet("MoveToPile", flag.ContinueOnError)
 	var idToMove = moveToPileFlags.Int("id", 0, "Id of record to move")
 
+	moveFlags := flag.NewFlagSet("Move", flag.ExitOnError)
+	var idToMoveToFolder = moveFlags.Int("id", 0, "Id of record to move")
+	var folderID = moveFlags.Int("folder", 0, "Id of folder to move to")
+
 	locateFlags := flag.NewFlagSet("Locate", flag.ExitOnError)
 	var idToLocate = locateFlags.Int("id", 0, "Id of record to locate")
 
@@ -697,6 +730,7 @@ func main() {
 	investigateFlags := flag.NewFlagSet("investigate", flag.ExitOnError)
 	var investigateID = investigateFlags.Int("id", 0, "Id of release to investigate")
 	var investigateYear = investigateFlags.Int("year", 0, "Year of releases to list")
+	var deepInvestigate = investigateFlags.Bool("deep", false, "Do a deep search for the release")
 
 	diffFlags := flag.NewFlagSet("diff", flag.ExitOnError)
 	var startTimestamp = diffFlags.Int64("start", 0, "Start timestamp")
@@ -731,7 +765,7 @@ func main() {
 	printTidyFlags := flag.NewFlagSet("printtidy", flag.ExitOnError)
 	var ptLoc = printTidyFlags.String("name", "", "The folder to print")
 
-	var quiet = flag.Bool("quiet", true, "Show all output")
+	var quiet = flag.Bool("quiet", false, "Show all output")
 	flag.Parse()
 
 	if *quiet {
@@ -762,6 +796,10 @@ func main() {
 			listUncategorized()
 		} else {
 			listUncategorized()
+		}
+	case "move":
+		if err := moveFlags.Parse(os.Args[2:]); err == nil && *idToMoveToFolder > 0 {
+			move(*idToMoveToFolder, *folderID)
 		}
 	case "organise":
 		if err := organiseFlags.Parse(os.Args[2:]); err == nil {
@@ -806,8 +844,18 @@ func main() {
 					}
 				}
 			} else {
-				rel, meta := getRelease(int32(*investigateID))
-				fmt.Printf("%v\n%v\n", rel, meta)
+				if *deepInvestigate {
+					recs := getAllReleases()
+
+					for _, r := range recs {
+						if int(r.Id) == *investigateID {
+							fmt.Printf("%v\n", r)
+						}
+					}
+				} else {
+					rel, meta := getRelease(int32(*investigateID))
+					fmt.Printf("%v\n%v\n", rel, meta)
+				}
 			}
 		}
 	case "diff":
