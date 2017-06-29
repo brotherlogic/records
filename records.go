@@ -638,9 +638,22 @@ func printTidy(place string) {
 		panic(err)
 	}
 
-	fmt.Printf("Infractions:\n")
-	for _, inf := range infractions.Entries {
-		fmt.Printf("%v.%v\n", inf.Id, prettyPrintRelease(inf.Id))
+	if len(infractions.Entries) > 0 {
+		fmt.Printf("Infractions:\n")
+		for _, inf := range infractions.Entries {
+			fmt.Printf("%v.%v\n", inf.Id, prettyPrintRelease(inf.Id))
+		}
+	}
+
+	violations, err := client.GetQuotaViolations(context.Background(), &pbo.Empty{})
+	if err != nil {
+		panic(err)
+	}
+
+	if len(violations.GetLocations()) > 0 {
+		for _, loc := range violations.Locations {
+			fmt.Printf("Quota Violation in folder %v\n", loc.Name)
+		}
 	}
 
 	dServer, dPort := getIP("discogssyncer")
