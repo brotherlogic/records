@@ -739,6 +739,7 @@ func main() {
 	var updateFolders = updateLocationFlags.String("folders", "", "Folders to add")
 	var numSlots = updateLocationFlags.Int("slots", -1, "The number of slots to update to")
 	var formatexp = updateLocationFlags.String("format", "", "The format test")
+	var unexpectedlabel = updateLocationFlags.String("unlabel", "", "The unexpected label test")
 
 	investigateFlags := flag.NewFlagSet("investigate", flag.ExitOnError)
 	var investigateID = investigateFlags.Int("id", 0, "Id of release to investigate")
@@ -844,6 +845,8 @@ func main() {
 				location.Units = int32(*numSlots)
 			} else if *formatexp != "" {
 				location.ExpectedFormat = *formatexp
+			} else if *unexpectedlabel != "" {
+				location.UnexpectedLabel = *unexpectedlabel
 			}
 			updateLocation(location)
 		}
