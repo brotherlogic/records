@@ -501,6 +501,23 @@ func setWant(id int, wantValue bool) {
 	fmt.Printf("%v\n", wantRet)
 }
 
+func deleteLocation(name string) {
+	//Move the previous record down to uncategorized
+	server, port := getIP("recordsorganiser")
+	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer conn.Close()
+	client := pbo.NewOrganiserServiceClient(conn)
+	_, err = client.DeleteLocation(context.Background(), &pbo.Location{Name: name})
+	if err != nil {
+		panic(err)
+	}
+}
+
 func printLow(name string, others bool) {
 	//Move the previous record down to uncategorized
 	server, port := getIP("recordsorganiser")
@@ -590,6 +607,11 @@ func sell(ID int) {
 	folderAdd := &pb.ReleaseMove{Release: release, NewFolderId: int32(488127)}
 
 	_, err = dClient.MoveToFolder(context.Background(), folderAdd)
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = dClient.Sell(context.Background(), release)
 	if err != nil {
 		panic(err)
 	}
@@ -758,6 +780,9 @@ func main() {
 	printTidyFlags := flag.NewFlagSet("printtidy", flag.ExitOnError)
 	var ptLoc = printTidyFlags.String("name", "", "The folder to print")
 
+	delLocFlags := flag.NewFlagSet("deleteLocation", flag.ExitOnError)
+	var delLocName = delLocFlags.String("name", "", "The name of the folder to delete")
+
 	var quiet = flag.Bool("quiet", false, "Show all output")
 	flag.Parse()
 
@@ -910,6 +935,10 @@ func main() {
 	case "printtidy":
 		if err := printTidyFlags.Parse(os.Args[2:]); err == nil {
 			printTidy(*ptLoc)
+		}
+	case "deletelocation":
+		if err := delLocFlags.Parse(os.Args[2:]); err == nil {
+			deleteLocation(*delLocName)
 		}
 	}
 
