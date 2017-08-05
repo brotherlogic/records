@@ -274,31 +274,6 @@ func updateLocation(loc *pbo.Location) {
 	client.UpdateLocation(context.Background(), loc)
 }
 
-func listCollections() {
-	server, port := getIP("recordsorganiser")
-	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
-
-	if err != nil {
-		panic(err)
-	}
-
-	defer conn.Close()
-	client := pbo.NewOrganiserServiceClient(conn)
-	orgs, err := client.GetOrganisations(context.Background(), &pbo.Empty{})
-
-	if err != nil {
-		panic(err)
-	}
-
-	if len(orgs.Organisations) == 0 {
-		fmt.Printf("There are no stored orgs\n")
-	}
-
-	for _, org := range orgs.Organisations {
-		fmt.Printf("%v\n", org.Timestamp)
-	}
-}
-
 func printDiff(diffRequest *pbo.DiffRequest) {
 	server, port := getIP("recordsorganiser")
 	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
@@ -550,6 +525,7 @@ func printLow(name string, others bool) {
 	var lowest []*pbd.Release
 	lowestScore := 6
 	for _, folderID := range location.FolderIds {
+		log.Printf("Checking folder: %v", folderID)
 		releases, err := dClient.GetReleasesInFolder(context.Background(), &pb.FolderList{Folders: []*pbd.Folder{&pbd.Folder{Id: folderID}}})
 
 		if err != nil {
@@ -747,8 +723,6 @@ func main() {
 	var deepInvestigate = investigateFlags.Bool("deep", false, "Do a deep search for the release")
 
 	diffFlags := flag.NewFlagSet("diff", flag.ExitOnError)
-	var startTimestamp = diffFlags.Int64("start", 0, "Start timestamp")
-	var endTimestamp = diffFlags.Int64("end", 0, "End timestamp")
 	var diffSlot = diffFlags.Int("slot", 0, "The slot to check")
 	var diffName = diffFlags.String("name", "", "The folder to check")
 
@@ -800,8 +774,6 @@ func main() {
 		if err := getLocationFlags.Parse(os.Args[2:]); err == nil {
 			getLocation(*getName, int32(*slot), *timestamp)
 		}
-	case "listTimes":
-		listCollections()
 	case "listFolders":
 		listFolders()
 	case "uncat":
@@ -877,10 +849,8 @@ func main() {
 	case "diff":
 		if err := diffFlags.Parse(os.Args[2:]); err == nil {
 			differ := &pbo.DiffRequest{
-				StartTimestamp: *startTimestamp,
-				EndTimestamp:   *endTimestamp,
-				Slot:           int32(*diffSlot),
-				LocationName:   *diffName,
+				Slot:         int32(*diffSlot),
+				LocationName: *diffName,
 			}
 			printDiff(differ)
 		}
