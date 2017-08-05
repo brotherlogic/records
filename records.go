@@ -305,7 +305,12 @@ func locate(id int) {
 
 	defer conn.Close()
 	client := pbo.NewOrganiserServiceClient(conn)
-	res, _ := client.Locate(context.Background(), &pbd.Release{Id: int32(id)})
+	res, err := client.Locate(context.Background(), &pbd.Release{Id: int32(id)})
+
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return
+	}
 
 	fmt.Printf("In %v, slot %v\n", res.Location.Name, res.Slot)
 	if res.Before != nil {
