@@ -523,6 +523,23 @@ func setWant(id int, wantValue bool) {
 	fmt.Printf("%v\n", wantRet)
 }
 
+func deleteLocation(name string) {
+	//Move the previous record down to uncategorized
+	server, port := getIP("recordsorganiser")
+	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer conn.Close()
+	client := pbo.NewOrganiserServiceClient(conn)
+	_, err = client.DeleteLocation(context.Background(), &pbo.Location{Name: name})
+	if err != nil {
+		panic(err)
+	}
+}
+
 func printLow(name string, others bool) {
 	//Move the previous record down to uncategorized
 	server, port := getIP("recordsorganiser")
@@ -552,6 +569,7 @@ func printLow(name string, others bool) {
 	var lowest []*pbd.Release
 	lowestScore := 6
 	for _, folderID := range location.FolderIds {
+		log.Printf("Checking folder: %v", folderID)
 		releases, err := dClient.GetReleasesInFolder(context.Background(), &pb.FolderList{Folders: []*pbd.Folder{&pbd.Folder{Id: folderID}}})
 
 		if err != nil {
@@ -611,6 +629,11 @@ func sell(ID int) {
 	folderAdd := &pb.ReleaseMove{Release: release, NewFolderId: int32(488127)}
 
 	_, err = dClient.MoveToFolder(context.Background(), folderAdd)
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = dClient.Sell(context.Background(), release)
 	if err != nil {
 		panic(err)
 	}
@@ -821,6 +844,9 @@ func main() {
 	rawLocFlags := flag.NewFlagSet("rawlocation", flag.ExitOnError)
 	var rawID = rawLocFlags.Int("id", 0, "Folder to investigate")
 
+	delLocFlags := flag.NewFlagSet("deleteLocation", flag.ExitOnError)
+	var delLocName = delLocFlags.String("name", "", "The name of the folder to delete")
+
 	var quiet = flag.Bool("quiet", false, "Show all output")
 	flag.Parse()
 
@@ -996,6 +1022,10 @@ func main() {
 	case "rawlocation":
 		if err := rawLocFlags.Parse(os.Args[2:]); err == nil {
 			listFolder(int32(*rawID))
+		}
+	case "deletelocation":
+		if err := delLocFlags.Parse(os.Args[2:]); err == nil {
+			deleteLocation(*delLocName)
 		}
 	}
 
