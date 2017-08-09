@@ -32,6 +32,26 @@ func getIP(servername string) (string, int) {
 	return r.Ip, int(r.Port)
 }
 
+func listFolder(ID int32) {
+	dServer, dPort := getIP("discogssyncer")
+	//Move the previous record down to uncategorized
+	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	defer dConn.Close()
+	dClient := pb.NewDiscogsServiceClient(dConn)
+	releases, err := dClient.GetReleasesInFolder(context.Background(), &pb.FolderList{Folders: []*pbd.Folder{&pbd.Folder{Id: ID}}})
+
+	if err != nil {
+		panic(err)
+	}
+
+	for _, release := range releases.Releases {
+		fmt.Printf("%v: %v - %v\n", release.Id, pbd.GetReleaseArtist(*release), release.Title)
+	}
+}
+
 func addLocation(name string, units int, folders string) {
 	location := &pbo.Location{Name: name, Units: int32(units)}
 	for _, folder := range strings.Split(folders, ",") {
@@ -123,12 +143,13 @@ func getLocation(name string, slot int32, timestamp int64) {
 			relMap[rel.Id] = rel
 		}
 	}
-
+	width := int32(0)
 	for _, release := range location.ReleasesLocation {
 		if release.Slot == slot {
 			fullRelease, err := dClient.GetSingleRelease(context.Background(), &pbd.Release{Id: release.ReleaseId})
 			if err == nil {
-				fmt.Printf("%v. %v - %v\n", release.Index, pbd.GetReleaseArtist(*fullRelease), fullRelease.Title)
+				width += fullRelease.FormatQuantity
+				fmt.Printf("%v. [%v] %v - %v\n", release.Index, width, pbd.GetReleaseArtist(*fullRelease), fullRelease.Title)
 			}
 		}
 	}
@@ -193,7 +214,9 @@ func listUncategorized() {
 		fmt.Printf("%v: %v - %v\n", release.Id, pbd.GetReleaseArtist(*release), release.Title)
 	}
 }
+
 func listFolders() {
+	fmt.Printf("Folders:\n")
 	server, port := getIP("recordsorganiser")
 	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
 
@@ -274,31 +297,6 @@ func updateLocation(loc *pbo.Location) {
 	client.UpdateLocation(context.Background(), loc)
 }
 
-func listCollections() {
-	server, port := getIP("recordsorganiser")
-	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
-
-	if err != nil {
-		panic(err)
-	}
-
-	defer conn.Close()
-	client := pbo.NewOrganiserServiceClient(conn)
-	orgs, err := client.GetOrganisations(context.Background(), &pbo.Empty{})
-
-	if err != nil {
-		panic(err)
-	}
-
-	if len(orgs.Organisations) == 0 {
-		fmt.Printf("There are no stored orgs\n")
-	}
-
-	for _, org := range orgs.Organisations {
-		fmt.Printf("%v\n", org.Timestamp)
-	}
-}
-
 func printDiff(diffRequest *pbo.DiffRequest) {
 	server, port := getIP("recordsorganiser")
 	conn, err := grpc.Dial(server+":"+strconv.Itoa(port), grpc.WithInsecure())
@@ -330,7 +328,11 @@ func locate(id int) {
 
 	defer conn.Close()
 	client := pbo.NewOrganiserServiceClient(conn)
-	res, _ := client.Locate(context.Background(), &pbd.Release{Id: int32(id)})
+	res, err := client.Locate(context.Background(), &pbd.Release{Id: int32(id)})
+
+	if err != nil {
+		log.Fatalf("Unable to locate %v: %v", id, err)
+	}
 
 	fmt.Printf("In %v, slot %v\n", res.Location.Name, res.Slot)
 	if res.Before != nil {
@@ -709,6 +711,41 @@ func printTidy(place string) {
 	}
 }
 
+func delete(instance int) {
+	dServer, dPort := getIP("discogssyncer")
+	//Move the previous record down to uncategorized
+	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	defer dConn.Close()
+	dClient := pb.NewDiscogsServiceClient(dConn)
+
+	if instance == 0 {
+		found := true
+		for found {
+			r, errin := dClient.GetSingleRelease(context.Background(), &pbd.Release{Id: int32(0)})
+			if errin != nil {
+				log.Fatalf("Get FAIL: %v", err)
+			}
+			log.Printf("DELETING %v", r.InstanceId)
+			if r.InstanceId > 0 {
+				_, errin = dClient.DeleteInstance(context.Background(), &pbd.Release{InstanceId: r.InstanceId})
+				if errin != nil {
+					log.Fatalf("DELETE FAIL: %v", errin)
+				}
+			} else {
+				found = false
+			}
+		}
+	} else {
+		_, err = dClient.DeleteInstance(context.Background(), &pbd.Release{InstanceId: int32(instance)})
+		if err != nil {
+			log.Printf("DELETE FAIL: %v", err)
+		}
+	}
+}
+
 func main() {
 	addFlags := flag.NewFlagSet("AddRecord", flag.ExitOnError)
 	var id = addFlags.Int("id", 0, "ID of record to add")
@@ -747,8 +784,6 @@ func main() {
 	var deepInvestigate = investigateFlags.Bool("deep", false, "Do a deep search for the release")
 
 	diffFlags := flag.NewFlagSet("diff", flag.ExitOnError)
-	var startTimestamp = diffFlags.Int64("start", 0, "Start timestamp")
-	var endTimestamp = diffFlags.Int64("end", 0, "End timestamp")
 	var diffSlot = diffFlags.Int("slot", 0, "The slot to check")
 	var diffName = diffFlags.String("name", "", "The folder to check")
 
@@ -765,6 +800,7 @@ func main() {
 
 	spendFlags := flag.NewFlagSet("spend", flag.ContinueOnError)
 	var doList = spendFlags.Bool("list", false, "Show the records spent on")
+	var justPrint = spendFlags.Bool("justprint", false, "Just print the spend")
 
 	deleteWantFlags := flag.NewFlagSet("deletewant", flag.ExitOnError)
 	var deleteWantID = deleteWantFlags.Int("id", 0, "Id of want to delete")
@@ -778,6 +814,12 @@ func main() {
 
 	printTidyFlags := flag.NewFlagSet("printtidy", flag.ExitOnError)
 	var ptLoc = printTidyFlags.String("name", "", "The folder to print")
+
+	deleteFlags := flag.NewFlagSet("delete", flag.ExitOnError)
+	var instance = deleteFlags.Int("instance", 0, "Instance to delete")
+
+	rawLocFlags := flag.NewFlagSet("rawlocation", flag.ExitOnError)
+	var rawID = rawLocFlags.Int("id", 0, "Folder to investigate")
 
 	var quiet = flag.Bool("quiet", false, "Show all output")
 	flag.Parse()
@@ -800,8 +842,6 @@ func main() {
 		if err := getLocationFlags.Parse(os.Args[2:]); err == nil {
 			getLocation(*getName, int32(*slot), *timestamp)
 		}
-	case "listTimes":
-		listCollections()
 	case "listFolders":
 		listFolders()
 	case "uncat":
@@ -877,10 +917,8 @@ func main() {
 	case "diff":
 		if err := diffFlags.Parse(os.Args[2:]); err == nil {
 			differ := &pbo.DiffRequest{
-				StartTimestamp: *startTimestamp,
-				EndTimestamp:   *endTimestamp,
-				Slot:           int32(*diffSlot),
-				LocationName:   *diffName,
+				Slot:         int32(*diffSlot),
+				LocationName: *diffName,
 			}
 			printDiff(differ)
 		}
@@ -901,6 +939,9 @@ func main() {
 		allowedSpendPerQuarter := 40000.0 * 3.0 * float64(n.YearDay()%91) / 91.0
 		if err := spendFlags.Parse(os.Args[2:]); err == nil {
 			fmt.Printf("Spend = %v / %v [%v]\n", spend, allowedSpendPerQuarter, *doList)
+			if *justPrint {
+				return
+			}
 			if *doList {
 				for i, record := range records {
 					fmt.Printf("%v. %v [%v]\n", i, prettyPrintRelease(record.Release.Id), record.Update.Cost)
@@ -935,6 +976,26 @@ func main() {
 	case "printtidy":
 		if err := printTidyFlags.Parse(os.Args[2:]); err == nil {
 			printTidy(*ptLoc)
+		}
+	case "delete":
+		if err := deleteFlags.Parse(os.Args[2:]); err == nil {
+			delete(*instance)
+		}
+	case "sync":
+		dServer, dPort := getIP("discogssyncer")
+		dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+		if err != nil {
+			panic(err)
+		}
+		defer dConn.Close()
+		dClient := pb.NewDiscogsServiceClient(dConn)
+		_, err = dClient.SyncWithDiscogs(context.Background(), &pb.Empty{})
+		if err != nil {
+			log.Fatalf("Failure to sync: %v", err)
+		}
+	case "rawlocation":
+		if err := rawLocFlags.Parse(os.Args[2:]); err == nil {
+			listFolder(int32(*rawID))
 		}
 	}
 
