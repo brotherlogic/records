@@ -16,11 +16,12 @@ import (
 	pb "github.com/brotherlogic/discogssyncer/server"
 	pbdi "github.com/brotherlogic/discovery/proto"
 	pbd "github.com/brotherlogic/godiscogs"
+	"github.com/brotherlogic/goserver/utils"
 	pbo "github.com/brotherlogic/recordsorganiser/proto"
 )
 
 func getIP(servername string) (string, int) {
-	conn, _ := grpc.Dial("192.168.86.42:50055", grpc.WithInsecure())
+	conn, _ := grpc.Dial(utils.RegistryIP+":"+strconv.Itoa(utils.RegistryPort), grpc.WithInsecure())
 	defer conn.Close()
 
 	registry := pbdi.NewDiscoveryServiceClient(conn)
@@ -293,8 +294,8 @@ func updateLocation(loc *pbo.Location) {
 
 	defer conn.Close()
 	client := pbo.NewOrganiserServiceClient(conn)
-	log.Printf("Updating: %v", loc)
-	client.UpdateLocation(context.Background(), loc)
+	r, err := client.UpdateLocation(context.Background(), loc)
+	fmt.Printf("From %v got %v\n", loc, r)
 }
 
 func printDiff(diffRequest *pbo.DiffRequest) {
@@ -670,6 +671,7 @@ func printTidy(place string) {
 		}
 	}
 
+	log.Printf("RUNNING GET QUOTA VIOLATIONS")
 	violations, err := client.GetQuotaViolations(context.Background(), &pbo.Empty{})
 	if err != nil {
 		panic(err)
@@ -800,6 +802,7 @@ func main() {
 	var numSlots = updateLocationFlags.Int("slots", -1, "The number of slots to update to")
 	var formatexp = updateLocationFlags.String("format", "", "The format test")
 	var unexpectedlabel = updateLocationFlags.String("unlabel", "", "The unexpected label test")
+	var quotaNum = updateLocationFlags.Int("quota", -1, "The quota number")
 
 	investigateFlags := flag.NewFlagSet("investigate", flag.ExitOnError)
 	var investigateID = investigateFlags.Int("id", 0, "Id of release to investigate")
@@ -913,6 +916,8 @@ func main() {
 				location.ExpectedFormat = *formatexp
 			} else if *unexpectedlabel != "" {
 				location.UnexpectedLabel = *unexpectedlabel
+			} else if *quotaNum > 0 {
+				location.Quota = &pbo.Quota{NumOfUnits: int32(*quotaNum)}
 			}
 			updateLocation(location)
 		}
