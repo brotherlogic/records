@@ -196,7 +196,7 @@ func prettyPrintRelease(id int32) string {
 	return strconv.Itoa(int(id))
 }
 
-func listUncategorized() {
+func listUncategorized(uncatAll bool) {
 	dServer, dPort := getIP("discogssyncer")
 	//Move the previous record down to uncategorized
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
@@ -213,6 +213,9 @@ func listUncategorized() {
 
 	for _, release := range releases.Releases {
 		fmt.Printf("%v: %v - %v\n", release.Id, pbd.GetReleaseArtist(*release), release.Title)
+		if uncatAll {
+			moveToPile(int(release.Id))
+		}
 	}
 }
 
@@ -786,7 +789,7 @@ func main() {
 	var timestamp = getLocationFlags.Int64("time", -1, "The timestamp to retrieve")
 
 	moveToPileFlags := flag.NewFlagSet("MoveToPile", flag.ContinueOnError)
-	var idToMove = moveToPileFlags.Int("id", 0, "Id of record to move")
+	var idToMove = moveToPileFlags.Int("id", -1, "Id of record to move")
 
 	moveFlags := flag.NewFlagSet("Move", flag.ExitOnError)
 	var idToMoveToFolder = moveFlags.Int("id", 0, "Id of record to move")
@@ -876,9 +879,9 @@ func main() {
 	case "uncat":
 		if err := moveToPileFlags.Parse(os.Args[2:]); err == nil && *idToMove > 0 {
 			moveToPile(*idToMove)
-			listUncategorized()
+			listUncategorized(false)
 		} else {
-			listUncategorized()
+			listUncategorized(*idToMove == 0)
 		}
 	case "move":
 		if err := moveFlags.Parse(os.Args[2:]); err == nil && *idToMoveToFolder > 0 {
