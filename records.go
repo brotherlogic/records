@@ -457,6 +457,27 @@ func deleteWant(id int) {
 	}
 }
 
+func deleteAllWants() {
+	dServer, dPort := getIP("discogssyncer")
+	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	defer dConn.Close()
+	dClient := pb.NewDiscogsServiceClient(dConn)
+	res, err := dClient.GetWantlist(context.Background(), &pb.Empty{})
+	if err != nil {
+		panic(err)
+	}
+	for _, want := range res.GetWant() {
+		_, err := dClient.DeleteWant(context.Background(), &pb.Want{ReleaseId: int32(want.ReleaseId)})
+
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
 func printWantlist() {
 	dServer, dPort := getIP("discogssyncer")
 	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
@@ -997,7 +1018,11 @@ func main() {
 		}
 	case "deletewant":
 		if err := deleteWantFlags.Parse(os.Args[2:]); err == nil {
-			deleteWant(*deleteWantID)
+			if *deleteWantID < 0 {
+				deleteAllWants()
+			} else {
+				deleteWant(*deleteWantID)
+			}
 		}
 	case "updatemeta":
 		if err := updateDateAddedFlags.Parse(os.Args[2:]); err == nil {
