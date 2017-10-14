@@ -150,7 +150,7 @@ func getLocation(name string, slot int32, timestamp int64) {
 			fullRelease, err := dClient.GetSingleRelease(context.Background(), &pbd.Release{Id: release.ReleaseId})
 			if err == nil {
 				width += fullRelease.FormatQuantity
-				fmt.Printf("%v. [%v] %v - %v\n", release.Index, width, pbd.GetReleaseArtist(*fullRelease), fullRelease.Title)
+				fmt.Printf("%v. [%v] %v - %v (%v)\n", release.Index, width, pbd.GetReleaseArtist(*fullRelease), fullRelease.Title, fullRelease.Id)
 			}
 		}
 	}
