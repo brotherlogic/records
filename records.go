@@ -678,6 +678,8 @@ func printTidy(place string) {
 	locationQuery := &pbo.Location{Name: place, Timestamp: -1}
 	location, err := client.GetLocation(context.Background(), locationQuery)
 
+	log.Printf("Got location")
+
 	if err != nil {
 		panic(err)
 	}
@@ -688,12 +690,16 @@ func printTidy(place string) {
 		panic(err)
 	}
 
+	log.Printf("Cleaned location")
+
 	if len(infractions.Entries) > 0 {
 		fmt.Printf("Infractions:\n")
 		for _, inf := range infractions.Entries {
 			fmt.Printf("%v.%v\n", inf.Id, prettyPrintRelease(inf.Id))
 		}
 	}
+
+	log.Printf("Listen infractions")
 
 	log.Printf("RUNNING GET QUOTA VIOLATIONS")
 	violations, err := client.GetQuotaViolations(context.Background(), &pbo.Empty{})
@@ -965,7 +971,7 @@ func main() {
 					}
 				} else {
 					rel, meta := getRelease(int32(*investigateID))
-					fmt.Printf("%v\n%v\n", rel, meta)
+					fmt.Printf("%v\n%v (%v)\n", rel, meta, meta.GetCost())
 				}
 			}
 		}
