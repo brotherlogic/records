@@ -20,6 +20,11 @@ import (
 	pbo "github.com/brotherlogic/recordsorganiser/proto"
 )
 
+const (
+	retries     = 5
+	backoffTime = time.Second * 5
+)
+
 func getIP(servername string) (string, int) {
 	conn, _ := grpc.Dial(utils.RegistryIP+":"+strconv.Itoa(utils.RegistryPort), grpc.WithInsecure())
 	defer conn.Close()
@@ -158,18 +163,23 @@ func getLocation(name string, slot int32, timestamp int64) {
 }
 
 func getRelease(id int32) (*pbd.Release, *pb.ReleaseMetadata) {
-	dServer, dPort := getIP("discogssyncer")
-	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
-	if err != nil {
-		return nil, nil
-	}
-	defer dConn.Close()
-	dClient := pb.NewDiscogsServiceClient(dConn)
+	for i := 0; i < retries; i++ {
+		dServer, dPort := getIP("discogssyncer")
+		dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+		if err == nil {
+			defer dConn.Close()
+			dClient := pb.NewDiscogsServiceClient(dConn)
 
-	releaseRequest := &pbd.Release{Id: id}
-	rel, _ := dClient.GetSingleRelease(context.Background(), releaseRequest)
-	meta, _ := dClient.GetMetadata(context.Background(), rel)
-	return rel, meta
+			releaseRequest := &pbd.Release{Id: id}
+			rel, err1 := dClient.GetSingleRelease(context.Background(), releaseRequest)
+			meta, err2 := dClient.GetMetadata(context.Background(), rel)
+			if err1 == nil && err2 == nil {
+				return rel, meta
+			}
+		}
+		time.Sleep(backoffTime)
+	}
+	return nil, nil
 }
 
 func getAllReleases() []*pbd.Release {
@@ -614,6 +624,7 @@ func printLow(name string, others bool) {
 
 	for i, release := range lowest {
 		_, meta := getRelease(release.Id)
+		log.Printf("META = %v (%v)", meta, release.Id)
 		if !others || meta.Others {
 			fmt.Printf("%v [%v]. %v\n", i, release.Id, prettyPrintRelease(release.Id))
 		}
@@ -678,8 +689,6 @@ func printTidy(place string) {
 	locationQuery := &pbo.Location{Name: place, Timestamp: -1}
 	location, err := client.GetLocation(context.Background(), locationQuery)
 
-	log.Printf("Got location")
-
 	if err != nil {
 		panic(err)
 	}
@@ -690,8 +699,6 @@ func printTidy(place string) {
 		panic(err)
 	}
 
-	log.Printf("Cleaned location")
-
 	if len(infractions.Entries) > 0 {
 		fmt.Printf("Infractions:\n")
 		for _, inf := range infractions.Entries {
@@ -699,9 +706,6 @@ func printTidy(place string) {
 		}
 	}
 
-	log.Printf("Listen infractions")
-
-	log.Printf("RUNNING GET QUOTA VIOLATIONS")
 	violations, err := client.GetQuotaViolations(context.Background(), &pbo.Empty{})
 	if err != nil {
 		panic(err)
