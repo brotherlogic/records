@@ -48,8 +48,8 @@ func listFolder(ID int32) {
 		panic(err)
 	}
 
-	for _, release := range releases.Releases {
-		fmt.Printf("%v: %v - %v\n", release.Id, pbd.GetReleaseArtist(*release), release.Title)
+	for _, release := range releases.Records {
+		fmt.Printf("%v: %v - %v\n", release.GetRelease().Id, pbd.GetReleaseArtist(*release.GetRelease()), release.GetRelease().Title)
 	}
 }
 
@@ -140,8 +140,8 @@ func getLocation(name string, slot int32, timestamp int64) {
 			panic(err)
 		}
 
-		for _, rel := range releases.Releases {
-			relMap[rel.Id] = rel
+		for _, rel := range releases.Records {
+			relMap[rel.GetRelease().Id] = rel.GetRelease()
 		}
 	}
 	width := int32(0)
@@ -211,10 +211,10 @@ func listUncategorized(uncatAll bool) {
 		panic(err)
 	}
 
-	for _, release := range releases.Releases {
-		fmt.Printf("%v: %v - %v\n", release.Id, pbd.GetReleaseArtist(*release), release.Title)
+	for _, release := range releases.Records {
+		fmt.Printf("%v: %v - %v\n", release.GetRelease().Id, pbd.GetReleaseArtist(*release.GetRelease()), release.GetRelease().Title)
 		if uncatAll {
-			moveToPile(int(release.Id))
+			moveToPile(int(release.GetRelease().Id))
 		}
 	}
 }
@@ -363,9 +363,9 @@ func moveToPile(id int) {
 		log.Fatalf("Fatal error in getting releases: %v", err)
 	}
 
-	for _, release := range releases.Releases {
-		if release.Id == int32(id) {
-			move := &pb.ReleaseMove{Release: &pbd.Release{Id: int32(id), FolderId: 1, InstanceId: release.InstanceId}, NewFolderId: int32(812802)}
+	for _, release := range releases.Records {
+		if release.GetRelease().Id == int32(id) {
+			move := &pb.ReleaseMove{Release: &pbd.Release{Id: int32(id), FolderId: 1, InstanceId: release.GetRelease().InstanceId}, NewFolderId: int32(812802)}
 			_, err = dClient.MoveToFolder(context.Background(), move)
 			log.Printf("MOVED %v from %v", move, release)
 			if err != nil {
@@ -392,9 +392,9 @@ func move(id int, folderID int) {
 		log.Fatalf("Fatal error in getting releases: %v", err)
 	}
 
-	for _, release := range releases.Releases {
-		if release.Id == int32(id) {
-			move := &pb.ReleaseMove{Release: &pbd.Release{Id: int32(id), FolderId: release.FolderId, InstanceId: release.InstanceId}, NewFolderId: int32(folderID)}
+	for _, release := range releases.Records {
+		if release.GetRelease().Id == int32(id) {
+			move := &pb.ReleaseMove{Release: &pbd.Release{Id: int32(id), FolderId: release.GetRelease().FolderId, InstanceId: release.GetRelease().InstanceId}, NewFolderId: int32(folderID)}
 			_, err = dClient.MoveToFolder(context.Background(), move)
 			log.Printf("MOVED %v from %v", move, release)
 			if err != nil {
@@ -601,13 +601,13 @@ func printLow(name string, others bool) {
 			panic(err)
 		}
 
-		for _, release := range releases.Releases {
-			if int(release.Rating) < lowestScore {
-				lowestScore = int(release.Rating)
+		for _, release := range releases.Records {
+			if int(release.GetRelease().Rating) < lowestScore {
+				lowestScore = int(release.GetRelease().Rating)
 				lowest = make([]*pbd.Release, 0)
-				lowest = append(lowest, release)
-			} else if int(release.Rating) == lowestScore {
-				lowest = append(lowest, release)
+				lowest = append(lowest, release.GetRelease())
+			} else if int(release.GetRelease().Rating) == lowestScore {
+				lowest = append(lowest, release.GetRelease())
 			}
 		}
 	}
@@ -727,8 +727,8 @@ func printTidy(place string) {
 			panic(err)
 		}
 
-		for _, rel := range releases.Releases {
-			relMap[rel.Id] = rel
+		for _, rel := range releases.Records {
+			relMap[rel.GetRelease().Id] = rel.GetRelease()
 		}
 	}
 
