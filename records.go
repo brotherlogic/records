@@ -49,7 +49,7 @@ func listFolder(ID int32) {
 	}
 
 	for _, release := range releases.Records {
-		fmt.Printf("%v: %v - %v\n", release.GetRelease().Id, pbd.GetReleaseArtist(*release.GetRelease()), release.GetRelease().Title)
+		fmt.Printf("%v: %v - %v\n", release.GetRelease().Id, pbd.GetReleaseArtist(release.GetRelease()), release.GetRelease().Title)
 	}
 }
 
@@ -71,8 +71,8 @@ func addLocation(name string, units int, folders string) {
 	defer dConn.Close()
 	dClient := pbo.NewOrganiserServiceClient(dConn)
 	log.Printf("Sending: %v", location)
-	newLocation, _ := dClient.AddLocation(context.Background(), location)
-	log.Printf("New Location = %v", newLocation)
+	newLocation, err := dClient.AddLocation(context.Background(), location)
+	log.Printf("New Location = %v (%v)", newLocation, err)
 }
 
 func addRecord(id int) {
@@ -150,7 +150,7 @@ func getLocation(name string, slot int32, timestamp int64) {
 			fullRelease, err := dClient.GetSingleRelease(context.Background(), &pbd.Release{Id: release.ReleaseId})
 			if err == nil {
 				width += fullRelease.FormatQuantity
-				fmt.Printf("%v. [%v] %v - %v (%v)\n", release.Index, width, pbd.GetReleaseArtist(*fullRelease), fullRelease.Title, fullRelease.Id)
+				fmt.Printf("%v. [%v] %v - %v (%v)\n", release.Index, width, pbd.GetReleaseArtist(fullRelease), fullRelease.Title, fullRelease.Id)
 			}
 		}
 	}
@@ -188,35 +188,12 @@ func getAllReleases() []*pbd.Release {
 func prettyPrintRelease(id int32) string {
 	rel, _ := getRelease(id)
 	if rel != nil {
-		return pbd.GetReleaseArtist(*rel) + " - " + rel.Title
+		return pbd.GetReleaseArtist(rel) + " - " + rel.Title
 	}
 	if id == 0 {
 		return "---------------"
 	}
 	return strconv.Itoa(int(id))
-}
-
-func listUncategorized(uncatAll bool) {
-	dServer, dPort := getIP("discogssyncer")
-	//Move the previous record down to uncategorized
-	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
-	if err != nil {
-		panic(err)
-	}
-	defer dConn.Close()
-	dClient := pb.NewDiscogsServiceClient(dConn)
-	releases, err := dClient.GetReleasesInFolder(context.Background(), &pb.FolderList{Folders: []*pbd.Folder{&pbd.Folder{Id: 1}}})
-
-	if err != nil {
-		panic(err)
-	}
-
-	for _, release := range releases.Records {
-		fmt.Printf("%v: %v - %v\n", release.GetRelease().Id, pbd.GetReleaseArtist(*release.GetRelease()), release.GetRelease().Title)
-		if uncatAll {
-			moveToPile(int(release.GetRelease().Id))
-		}
-	}
 }
 
 func listFolders() {
@@ -340,10 +317,10 @@ func locate(id int) {
 
 	fmt.Printf("In %v, slot %v\n", res.Location.Name, res.Slot)
 	if res.Before != nil {
-		fmt.Printf("Before: %v - %v (%v)\n", pbd.GetReleaseArtist(*res.Before), res.Before.Title, res.Before.Id)
+		fmt.Printf("Before: %v - %v (%v)\n", pbd.GetReleaseArtist(res.Before), res.Before.Title, res.Before.Id)
 	}
 	if res.After != nil {
-		fmt.Printf("After:  %v - %v (%v)\n", pbd.GetReleaseArtist(*res.After), res.After.Title, res.After.Id)
+		fmt.Printf("After:  %v - %v (%v)\n", pbd.GetReleaseArtist(res.After), res.After.Title, res.After.Id)
 	}
 }
 
@@ -752,7 +729,7 @@ func printTidy(place string) {
 	slotv := int32(1)
 	for slotv > 0 {
 		if _, ok := bestIndex[slotv]; ok {
-			fmt.Printf("%v. %v - %v\n", slotv, pbd.GetReleaseArtist(*bestRelease[slotv]), bestRelease[slotv].Title)
+			fmt.Printf("%v. %v - %v\n", slotv, pbd.GetReleaseArtist(bestRelease[slotv]), bestRelease[slotv].Title)
 			slotv++
 		} else {
 			slotv = -1
@@ -795,7 +772,7 @@ func delete(instance int) {
 	}
 }
 
-func main() {
+func oldmain() {
 	addFlags := flag.NewFlagSet("AddRecord", flag.ExitOnError)
 	var id = addFlags.Int("id", 0, "ID of record to add")
 
@@ -808,9 +785,6 @@ func main() {
 	var getName = getLocationFlags.String("name", "", "The name of the location to get")
 	var slot = getLocationFlags.Int("slot", 1, "The slot to retrieve from")
 	var timestamp = getLocationFlags.Int64("time", -1, "The timestamp to retrieve")
-
-	moveToPileFlags := flag.NewFlagSet("MoveToPile", flag.ContinueOnError)
-	var idToMove = moveToPileFlags.Int("id", -1, "Id of record to move")
 
 	moveFlags := flag.NewFlagSet("Move", flag.ExitOnError)
 	var idToMoveToFolder = moveFlags.Int("id", 0, "Id of record to move")
@@ -897,13 +871,6 @@ func main() {
 		}
 	case "listFolders":
 		listFolders()
-	case "uncat":
-		if err := moveToPileFlags.Parse(os.Args[2:]); err == nil && *idToMove > 0 {
-			moveToPile(*idToMove)
-			listUncategorized(false)
-		} else {
-			listUncategorized(*idToMove == 0)
-		}
 	case "move":
 		if err := moveFlags.Parse(os.Args[2:]); err == nil && *idToMoveToFolder > 0 {
 			move(*idToMoveToFolder, *folderID)
