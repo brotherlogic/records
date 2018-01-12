@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -35,6 +36,15 @@ func main() {
 		err := listUncategorized(ctx, client)
 		if err != nil {
 			fmt.Printf("Error in list uncategorized: %v", err)
+		}
+	case "add":
+		addRecordFlags := flag.NewFlagSet("addrecord", flag.ExitOnError)
+		var id = addRecordFlags.Int("id", 0, "The id of the record")
+		var cost = addRecordFlags.Int("cost", 0, "The cost of the record (in cents)")
+		var folder = addRecordFlags.Int("folder", 0, "The id of the folder that this'll end up in")
+
+		if err := addRecordFlags.Parse(os.Args[2:]); err == nil {
+			add(ctx, client, int32(*id), int32(*cost), int32(*folder))
 		}
 	}
 }
