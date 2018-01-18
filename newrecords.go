@@ -44,7 +44,10 @@ func main() {
 		var folder = addRecordFlags.Int("folder", 0, "The id of the folder that this'll end up in")
 
 		if err := addRecordFlags.Parse(os.Args[2:]); err == nil {
-			add(ctx, client, int32(*id), int32(*cost), int32(*folder))
+			_, err := add(ctx, client, int32(*id), int32(*cost), int32(*folder))
+			if err != nil {
+				log.Fatalf("Error adding record: %v", err)
+			}
 		}
 	}
 }
