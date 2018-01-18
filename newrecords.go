@@ -27,7 +27,7 @@ func main() {
 	}
 	defer dConn.Close()
 	client := pbrc.NewRecordCollectionServiceClient(dConn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	// Argument handler
