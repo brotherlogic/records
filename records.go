@@ -13,28 +13,19 @@ import (
 	"google.golang.org/grpc"
 
 	pb "github.com/brotherlogic/discogssyncer/server"
-	pbdi "github.com/brotherlogic/discovery/proto"
 	pbd "github.com/brotherlogic/godiscogs"
 	"github.com/brotherlogic/goserver/utils"
 )
 
-func getIP(servername string) (string, int) {
-	conn, _ := grpc.Dial(utils.RegistryIP+":"+strconv.Itoa(utils.RegistryPort), grpc.WithInsecure())
-	defer conn.Close()
-
-	registry := pbdi.NewDiscoveryServiceClient(conn)
-	entry := pbdi.RegistryEntry{Name: servername}
-	r, err := registry.Discover(context.Background(), &entry)
-	if err != nil {
-		return "", -1
-	}
-	return r.Ip, int(r.Port)
+func getIP(name string) (string, int) {
+	ip, port, _ := utils.Resolve(name)
+	return ip, int(port)
 }
 
 func listFolder(ID int32) {
 	dServer, dPort := getIP("discogssyncer")
 	//Move the previous record down to uncategorized
-	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(dPort), grpc.WithInsecure())
+	dConn, err := grpc.Dial(dServer+":"+strconv.Itoa(int(dPort)), grpc.WithInsecure())
 	if err != nil {
 		panic(err)
 	}
